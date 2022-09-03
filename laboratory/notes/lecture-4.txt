@@ -1,0 +1,434 @@
+-- Lezione 4 --
+- I/O, Persistenza e Serializzazione -
+
+> Java I/O
+I/O: programmi che recuperano informazioni da una 
+sorgente esterna esterna o la inviano ad una sorgente 
+esterna
+
+- diversi tipi di device di input/output: se java dovesse
+  gestirli tutti singolarmente la complessita' sarebbe 
+  enorme
+- sono necessarie le opportune astrazioni per 
+  rappresentare una device di I/O 
+	- fra le parti piu' complesse di un linguaggio di 
+	  programmazione
+	- in Java la principale (la prima definita) astrazione
+     e' basata sul concetto di stream (flusso)
+		- alcune ulteriori astrazioni quali
+			- File: per la manipolazione di file
+			- Channels (li vedremo in dettaglio)
+
+- JAVA.IO.FILE
+Un'istanza della classe file descrive 
+	- path per l'individuazione del file o della directory
+		- non una semplice stringa
+		- metodi per verificare l'esistenza del path, 
+	     restituire meta-info sul file
+
+- Stream-Based I/O
+- stream: una sequenza di dati (un flusso di informazione
+  di lunghezza illimitata)
+	- e' una astrazione che rappresenta una connessione 
+	  tra un programma JAVA ed un dispositivo esterno 
+	  (che sia un file, un buffer di memoria o una 
+	  connessione di rete)
+	- e' un "canale" tra una sorgente ed una destinazione
+	  	- da un estremo entrano i dati e dall'altro escono
+
+- l'applicazione puo' inserire dati ad un capo dello 
+  stream
+- i dati fluiscono verso la destinazione e possono essere
+  estratti dall'altro capo dello stream
+
+- Gli stram possono supportare diversi tipi di dati 
+	- simple bytes, primitive data types, character e 
+	  oggetti
+	- alcuni stream semplicemente trasferiscono i dati, 
+	  altri li manipolano, trasformandoli in base a degli
+     obiettivi
+
+> Streams in Java
+- Accesso sequenziale
+- mantengono l'ordinamento FIFO
+- sono one-way: read only o write only (a parte file ad
+  accesso random)
+	- se un programmaha bisogno di dati in input o output
+     deve aprire due stream, uno in input e uno in output
+- bloccanti: quando un'applicazione legge/scrive un dato
+  da/su uno stream si blocca fino a quando l'operazione 
+  non e' completata
+- lettura e scrittura sono operazioni indipendenti, non 
+  e' richiesta nessuna corrispondenza stretta tra 
+  letture/scritture
+	- ad esempio: una unica scrittura inietta 100byte 
+     sullo steam che vengono letti con 2 write successive
+     dall'altro lato dello stream, la prima read puo' 
+     benissimo leggere 20 byte e la seconda 80
+
+- Tipi di Stream
+- ce ne sono un botto, piu' di 60
+> sono tutti basati su 4 classi astratte fondamentali
+	- InputStream - OutputStram
+	- Reader - Writer 
+> ci sono due principali tipi di stream
+	- Stream di byte: servono a leggere/scrivere sequenze
+     di byte, classi astratte di riferimento InputStream 
+     e OutputStream
+	- Stream di caratteri: per leggere/scrivere sequenze 
+	  di caratteri UNICODE a 16bit. L'I/O basato su 
+     character stream traduce automaticamente questo 
+     formato interno da e verso il set di caratteri 
+	  locale. Classi astratte di riferimento Reader e 
+     Writer
+
+- Character Stream
+Superclassi astratte Reader & Writer
+- Reader: contiene una parziale implemenetazione e le
+  API(metodi e campi) per realizzare stream che leggono
+  caratteri
+- Writer: contiene una parziale im... che scrivono 
+  caratteri
+
+- Stream di Byte
+Superclassi astratte InputStream e OutputStream
+- InputStream: contiene una parziale implementazione e
+  le api per realizzare stream che leggono Byte
+- OutPutStream: contiene una parziale implementazione 
+  e le API per realizzare stream che scrivono byte
+
+- Input/OutputStream: possono essere "attaccati" ad ogni
+  tipo di device input/output
+- il programma apre uno stream per ricevere/inviare dati
+
+- Input/OutputStream 
+Classi astratte che forniscono operazioni di base. 
+Sottoclassi concrete che forniscono implementazioni per
+tipi diversi di I/O
+- console: System.in, System.out, permette di leggere
+  scrivere byte a byte dalla/sulla keyboard
+- files: FileInputStream/FileOutputStream per leggere 
+  scrivere byte a byte da un file
+- in-memory buffers: per trasferimento di dati da una 
+  parte all'altra di un programma JAVA
+- ByteArrayInputStream, ByteArrayOutputStream
+  esempio: genere uno stream di byte per poi trasferirlo
+  in un pacchetto UDP
+
+- InputStream: metodi
+	- int read()
+		- un byte dallo stream letto con un intero tra 0 
+        e 255
+		- restituisce -1 se viene individuata la "fine 
+  		  dello stream"
+		- solleva un IOException se c'e' un errore di I/O
+		- bloccante fino a che c'e' disponbile anche solo
+		  un byte
+	- int read(byte[] bytes, int offset, int length)
+		- legge "length" bytes, li memorizza in bytes  
+	     partendo da offset
+	- ...
+
+-> digressione: try with resources
+Supporto per la sistematica delle risorse e/o delle 
+connessioni aperte programma
+	- try-with-resources si occupa di chiudere in modo
+	  automatico le risorse aprte
+	- si usa un blocco try con uno o piu' argomenti tra 
+     parentesi -> gli argomenti sono le risorse che java
+ 	  garantisce di chiudere al termine del blocco
+
+> suppressed exceptions
+	- quando si verificano eccezioni sia nel blocco try
+ 	  with resources che durante la chiusura di una 
+	  risorsa, la JVM sopprie l'eccezione generata 
+  	  dalla chiusura, evitando quindi la perdita dell'
+	  eccezione piu' significativa
+	- si possono comunque uesare blocchi catch e finally
+	  che vengono comunque eseguiti dopo la chiusura 
+     della risorsa
+
+> Java Filter Stream
+- Funzionalita' utile: concatenare gli stream di base
+  con gli stream filtro
+- Classi FilterInputStream e BufferedOutputStream con
+  diverse sottoclassi
+	- BufferedInput/OutputStream: implementano filtri che
+	  bufferizzano l'input da/l'output verso lo stream
+	  sottostante
+
+Quando si crea un BufferedInputStream viene creato un 
+buffer interno, via via che i byte sono letti il buffer
+viene riempito, piu' byte a botta. Il programma legge da
+questo buffer interno
+	- significativo incremento delle performance rispetto
+	  alla lettura dallo stream 
+
+DataInputStream e DataOutputStream implementano filtri
+che permettono di "formattare" i dati presenti sullo 
+stream
+
+- Formatted Data Streams
+DataInputStream: permette di leggere tipi di dati java
+pimitivi e String da un InputStream. Un'applicazione 
+puo' usare DataOutputStream per scrivere dati che 
+possono essere letti da un DataInputStream 
+	- Costruttore DataInputStream(InputStream in)
+
+> Object Serialization < 
+- Java Serializzation - 
+Scrittura e la lettura di oggetti
+- si basa sulla possibilita' di scrivere lo stato di un 
+  oggetto in una forma sequenziale, sufficiente per 
+  ricostruire l'oggetto quando viene riletto
+
+- ogni oggetto e' caratterizzato da uno stato e da un 
+  comportamento
+	- il comportamento e' specificato dai metodi della
+     class
+	- lo stato vive con l'istanza dell'oggetto
+- flattening/salvataggio dell'oggetto: salvando i valori
+  ad esempio su un text file (scegliento l'opportuno 
+  formato) e trasformando automaticamente l'oggetto o un
+  grafo di oggetti in uno stream di byte si puo', 
+  mediante un processo detto serializzazione, salvare 
+  un oggetto per poi ricostruirlo e usarlo in maniera
+  trasparente. 
+
+-- E' importante sapere come
+- scrivere un oggetto su ObjectOutputStream e come si 
+  rilegge usando ObjectInputStream
+- scrivere una classe in modo che le sue istanze possano
+  venire serializzate 
+
+> Java Serializzation 
+E' utilizzata in diversi contesti
+- fornire un meccanismo di persistenza ai programmi, 
+  consentendo l'archiviazione di un oggetto su un file 
+	- storage-n-retrive: ad esempio si memorizza lo stato
+	  di una sessione e lo si rende possibile per 
+	  sessioni successive della stessa applicazione
+
+- fornire un meccanismo di interoperabilita' mediante 
+  oggetti condivisi tra diverse applicazioni
+	- inviare oggetti su uno stream che rappresenta una
+	  connessione TCP
+	- inviare oggetti che sono parametri di metodi 
+     via RMI (che vedremo)
+	- generare uno stream di byte da un oggetto per poi
+     ricavare dallo stream un pacchetto di byte da 
+	  inserire in un pacchetto UDP
+
+> gli oggetti nella memoria principale del PC creati da
+  JAVA esistono solo fino a quando la JVM e' in 
+  esecuzione
+	- la serializzazione consente di mantenere la 
+     persistenza degli oggetti al di fuori del ciclo
+     della JVM
+	- creare una rappresentazione dell'oggetto 
+	  indipendente dalla JVM che ha generato l'oggetto
+     stesso
+	- un'altra JVM, se ha accesso alla classe (class 
+	  file) puo' ricostruire l'oggetto
+
+- comunque l'interoperabilita' e' limitata: questo
+  metodo funziona solo se sia l'applicazione che 
+  serializza e quella che deserializza l'oggetto sono 
+  scritte in JAVA
+	- per aumentare l'interoperabilita' occorrono altre
+	  soluzioni
+		- il formato JSON
+		- serializzazione in XML
+		- ...
+
+> Java Standard Serialization 
+Interfaccia Serializable
+	- per rendere un oggetto persistente questo deve
+     essere istanza di una classe che implementa 
+	  l'interfaccia Serializable
+	- e' una maker interface: e' una interfaccia 
+     completamente vuota, attiva solo il meccanismo di 
+     serializzazione che verifica se la classe ha le 
+	  giuste caratteristiche per venire serializzata
+		- i tipi di dato primitvo sono serializzabili
+		- gli oggetti che implementano Serializable sono
+	     serializzabili
+
+- quindi cosa non e' serializzabile?
+	- gli oggetti che fanno un riferimento specifico alla
+     JVM in esecuzione o al sistema operativo
+		- Thread
+		- Socket
+		- ...
+	- le variabili marcate come transient
+		- ad esempio quei campi che non devono essere 
+	     salvate per questioni di privacy
+	- tutti le variabili statiche
+		- appartengono alla classe! 
+
+- tutti i componenti di un oggetto devono essere 
+  serializzabili: se esiste un campo non serializzabile 
+  viene lanciata una eccezione notSerializableEx
+
+- la serializzazione vera e propria e' gestita dalla 
+  classe ObjectOutputStream, che deve essere associata
+  ad uno stream di byte, che puo' essere
+	- FileOutputStream
+	- uno stream di byte associato ad una socket
+	- BytearrayOutputStream
+	- ...
+
+# esempio
+	...
+	FileOutputStream fos = new FileOutputStream(filename)
+	ObjectOutputStrea out = new ObjectOutputStream(fos)
+	out.writeObject(objToSerialize)
+
+	FileInputStream fis = new FileInputStream(filename)
+	ObjectInputStream in = new ObjectInputStream(fis)
+	objToDeserialize = (casting) in.readObject()
+
+-> il metodo readObject() legge una sequenza di byte 
+   memorizzati in precedenza e crea un oggetto che e'
+	l'esatta replica di quello originale
+- readObject puo' leggere un qualunque tipo di oggetto,
+  e' quindi necessario un casting esplicito
+
+- la JVM determina, mediante le informazioni memorizzate
+  nell'oggetto serializzato, il tipo della classe 
+  dell'oggetto e tenta di caricare quella classe
+	- se la classe non viene trovata si lancia 
+	  una ClassNotFoundException ed il processo di 
+     deserializzazione viene abortito
+
+- se tutto va bene viene creato un nuovo oggetto sullo
+  heap, ma non viene invocato il costruttore: i campi
+  vengono inizializzati con i valori deserializzati
+
+> Serializzazione di Grafi di Oggetti
+- La sequenza di byte ottenuta contiene informazioni che
+  identificano il tipo di oggetto (la gerarchia di 
+  classi) e il valore degli attributi
+
+- se l'oggetto da serializzare contiene un riferimento
+  ad un altro oggetto, anche questo viene serializzato
+	- serializzazione transitiva
+	- se uno degli oggetti nell'albero non e' 
+     serializzabile viene lanciata l'eccezzione 
+
+- Deserializzazione
+> Al momento della deserializzazione la JVM deve trovare
+  il file .class 
+	- problematico quando si lavora in rete
+
+- void writeObject(Object o)
+Scrive l'informazione sulla classe e i valori degli 
+attributi da serializzare (non transient) 
+
+Se un oggetto viene scritto due volte, la prima volta
+e' generato un riferimento e la seconda volta scrive
+solo il riferimento
+- attenzione: se l'oggetto viene modificato dopo essere
+  stato scritto la prima volta la modifica non viene 
+  salvata con la seconda crittura
+
+> void writeUnshared(Object o): come writeObject pero'
+  oggetti ripetuti sono scritti come nuovi senza fare 
+  riferimento ai precedenti
+
+- Object readObject()
+Legge l'informazione sulla classe e i valori degli 
+attributi da deserializzare 
+
+Se incontra un riferimento ad un oggetto gia' letto si
+restituisce direttamente quel oggetto
+
+- object readUnshared()
+	- da usare per leggere gli oggetti scritti con 
+	  writeUnshared
+
+- Serial Version
+Per garantire che i processi di serializzazione e 
+deserializzazione usino versioni compatibili di una 
+classe Java definisce un UID (unique ID) per la 
+definizione di una classe
+
+- e' bene includere un serialVersionUID nella def della
+  classe.
+	- altimenti la JVM ne genera uno per noi, questo 
+     pero' e' rischioso perche' puo' causare problemi 
+     se si lavora su piattaforme diverse
+
+- per dichiarare la versione
+	private static final long serialVersionUID = 15L
+
+> Controllo Versione: Metodo 1
+Quando l'oggetto viene serializzato
+ - associa un serialVersionUID(suid) all'oggetto 
+   serializzato
+ - 64bit hash (SHA) generato a partire dalla struttura
+   della classe, nome della classe, nome delle 
+   interfacce + metodi e campi
+ - identifica univocamentela classe usata e serializzata
+   (con alta proprieta') 
+	- modiificando il codice si modifica il seriale 
+
+Deserializzazione
+- prima di leggere un oggetto serializzato
+	- si calcola il suid della classe locale (quella 
+     di cui si effettua la deserializzazione)
+	- si confronta il suid con il suid memorizzato nell'
+     object stream
+	- se i due valori corrispondono inizia la 
+	  deserializzazione
+		- altrienti InvalidClassException
+
+Il controllo delle versioni
+- per deserializzare e' necessario conoscere
+	- i byte che rappresentano l'oggetto serializzato
+	- il codice della classe che descrive la specifica 
+  	  dell'oggetto
+
+- la deserializzazione puo' avvenire in un ambiente 
+  diverso, ad esempio
+	- mediante l'uso di un compilatore diverso
+	- a distanza di tempo rispetto al momento della 
+	  serializzazione
+
+- si puo' usare una classe per la deserializzazione 
+  diversa, rispetto a quella usata per serializzare
+	- solo se i cambiamenti sono compatibili
+		- aggiunta di campi
+		- aggiunta di attributi (inizializzati a valori di
+ 		  default) 
+		- aggiunte di classi interne
+		- trasformare attributi transient in non 
+		- ...
+- in fase di deserializzazione semplicemente imposta i 
+  valori dei campi mancanti con i valori di default
+	- oppure il programmatore fixa esplicitamente 
+     i campi in fase di deserializzazion
+
+> delle modifiche incompatibili rendono complessa la 
+  deserializzazione
+	- rimozione di attributi
+	- trasformare non transient in transient 
+
+- Serializzazione Under the Hood
+Cosa avviene quando un oggetto viene serializzato?
+Si registrano sullo stream 
+	- i magic data
+	- i metadati che descrivono la classe associata 
+     all'istanza dell'oggetto serializzato
+	- la descrizione, che include il nome della classe, 
+     il seriale della classe, il numero di campi e altra
+     roba
+	- metadati relativi a eventuali superclassi
+	- i valori associati all'oggetto istanza della classe
+	- i dati degli oggetti eventualmente riferiti dall'
+     oggetto da serializzare
+- non si registrano i metodi della classe
+
+
+
+

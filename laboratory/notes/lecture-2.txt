@@ -1,0 +1,279 @@
+-- Lezione 2 --
+- Thread Pools, Thread synchronization -
+
+> Thread Pool Executor
+il costruttore piu' generale consente di personalizzare
+la politica di gestionedel pool
+	- CorePoolSize
+		- dimensione minima del pool, definisce il core 
+	     del pool. I thread del core possono essere creati
+ 		  con le seguenti modalita'	
+			- on-demand construction (default) i thread sono
+	 		  creati man mano che i task sono sottomessi
+			- prestartAllCoreThreads() al momento della 
+			  creazione del pool sono creati tutti i thread
+	- MaximumPoolSize
+		- dimensione massima del pool. Anche se ci sono dei
+        task da eseguire ma tutti i thread sono occupati
+	     non verranno mai creati piu' thread piu' di
+		  quanto indicato
+	- keepAliveTime
+	- workqueue
+
+- politica di riferimento
+	- alla  sottomissione di un nuovo task, se tutti i 
+	  thread del core sono stati creati
+		- se un thread del core e' inattivo allora il 
+		  task gli viene assegnao
+		- altimenti, se la coda workqueue passata come par 
+ 		  al costruttore non e' piena, il task viene
+	     inserito in workqueue
+			- i task vengono poi prelevati dalla coda ed 
+			  inviati ai thread disponibili
+			- altrimenti (coda piena e tutti i thread del 
+  		     core impegnati) si crea un altro thread
+				- fino a quando non si raggiunge il limite
+			- altrimenti il task viene respinto
+
+> Thread Pool Executor: Code
+- SynchronousQueue: dimensione uguale a 0, ogni nuovo 
+  task T viene eseguito oppure respinto.
+	- eseguito immediatamente se esiste un thread inattivo
+     o se e' possibile creare un nuovo thread 
+
+- LinkedBlockingQueue; dimensione illimitata
+	- E' sempre possibile accodare un nuovo task, nel caso
+	  in cui tutti i thrad sono attiivi nell'esecuzione
+	- la diensione del pool non puo' superare core
+
+- Executor Lifecycle 
+La JVM termina la sua esecuzione quando tutti i thread
+non demoni terminano la loro esecuzione
+	- e' necessario analizzare il concetto di terminazione
+	  nel caso si utilizzi un Executor Service in quanto
+		- i task vengono eseguiti in modo asincrono 
+		  rispetto alla loro sottomissione
+		- un thread del pool puo' rimanere attivo anche 
+	     quando ha terminato l'esecuzione di un task
+
+- poiche alcuni thread possono essere sempre attivi, Java
+  mette a disposizione dell'utente alcuni metodi che 
+  permettono di terminare l'esecuzione del pool
+
+> Executors: Terminazione
+puo' avvenire in due modi 
+	- graduale: "finisco cio' che e' iniziato e chiudo"
+		- shutdown(): graceful termination 
+			- nessun task viene piu' accettato dopo 
+			  l'invocazione
+			- tutti i task sottomessi in precedenza e non 
+			  ancora terminati vengono completati
+			- successivamente tutti i thread terminano
+	- istantaneo: stacca tutto
+		- shutdownNow() immediate terination 
+			- non accetta ulteriori task ed elimina i task
+	        non ancora iniziati
+			- restituisce una lista dei task che sono stati 
+		     eliminati dalla coda
+			- tenta di eliminare l'esecuzione dei thread che
+     	     stanno eseguendo i task
+
+- shutdownNow()
+	- implementzione best effort 
+	- non garantisce la terminazione immediata dei 
+     thread del pool
+	- implementazione generalmente usata:
+		- si invia una interrupt() ai thread in esecuzione
+		- se un thread non risponde all'interruzione
+		  non termina
+
+> La classe Thread
+La classe java.lang.Thread contiene i metodi per 
+	- costruire un thread interagendo con il sistema 
+	  operativo ospite 
+	- set e get per impostare e reperire le 
+	  caratteristiche diun thread
+		- assegnare / riprendere il nome di un thread...
+	- attivare, sospendere ed interrompere un thread
+	- attendere la terminazione di un thread
+
+- non contiene nessun metodo perla sicronizzazione fra
+  thrwad. Questi metodi sono definiti in 
+  java.object.lang, poerche' la sincronizzazione opera
+  su oggetti
+
+> Analizzare le proprieta' di un thread
+- la classe Thread salva alcune inforazioni che aiutano
+  l'identificazione dei threa
+	- ID: identificatore del thread
+	- nome: nome del thread
+	- proprieta': valore 1-10 (1 priorita' minim)
+	- ...
+
+> Il metodo JOIN
+Il metodo join() apppartiene alla classe Thread 
+	- il thread che esegue join() attende la terminazione
+	  dell'istanza del thread su cui e' stato invocato
+	  il metodo
+	- e' anche possibile specificare il timeout di attesa
+	- join() puo' anche lanciare una InterruptedEx, se il
+     thrad sospeso sulla join() riceve una interruzione
+
+> Sincronizzazione < 
+- Condivisione di risorse, lock esplici e conditions -
+
+Scenario tipico di un programma concorrente: un insieme
+di thread condividono una risorsa
+	- piu' thread accedono concorrentamente allo stesso
+	  file, alla stessa parte di un database o di una 
+	  struttura di memoria
+	- l'accesso non controllato a risorse condivise 
+	  genera errori ed inconsistenze
+		- corsa critica 
+
+	- sezione critica: blocco di codice in cui si accede
+	  ad una risosrsa condivisa e che quindi deve essere
+     eseguito da un solo thread per volta
+
+- meccanismi di sincronizzazione per l'implementazione
+  di sezioni critiche
+	- interfaccia lock e le varie implementazioni
+	- concetto di monitor
+
+definizione: Classe Thread Safe
+	l'esecuzione concorrente dei metodi definiti nella
+	classe non provoca comportamenti scorretti, ad
+   esempio race conditions
+
+> Meccanismi di Sincronizzazione 
+Java offre diversi meccanismi per la sincronizzazione di
+thread. 
+- Meccanismi a basso lvl
+	- lock()
+	- variabili di condizione associate a lock()
+- Meccanismi ad alto lvl
+	- parola chiave synchronized()
+	- wait(), notify(), notifyAll()
+	- montior
+
+Partiamo dal basso e poi saliamo.  
+> Lock
+Cosa e' unalock in java?
+	- un oggettoche puo' trovarsi in due stati distinti
+		- locked / unlocked
+		- lo stato si imposta con lock() / unlock()
+- un solo thread alla volta puo' impostare lo stato a 
+  "locked", cioe' ottenere la lock()
+	- gli altri thread che tentano di ottenere la lock 
+	  si bloccano
+	- quando un thread tenta di acquisire una lock
+		- rimane bloccato fintanto che la lock e' 
+    	  detenuta da un altro thread
+		- rilascio della lock: uno dei thread in attesa
+	     la acquisisce
+
+- come sappiamo cosi' si introduce il concetto di 
+  deadlock. 
+- L'interfaccia Lock e classe ReentrantLock che la 
+  implementa include unaltrometodo utilizzato per 
+  ottenere la lock: tryLock()
+	- tenta di acquisire la lock() e se essa e' gia'
+     posseduta da un altro thread, il metodo termina 
+	  immediatamente e restituisce il controllo al
+     chiamante
+	- restituisce un valore booleano, true se ha preso 
+	  la lock, false altrimenti
+
+- le lock introducono una performance penality dovuta 
+  a piu' fattori
+	- contention
+	- bookkeping
+	- scheduling
+	- ...
+
+> Reentrant Lock  
+Serve per evitare che un thread vada in deadlock con 
+se stesso
+	- prendo la lock su una risorsa, per errore finisco
+	  ad eseguire nuovamente la lock sulla stessa risorsa
+
+Per evitare situazioni simili le reentrant lock usano un
+contatore
+	- incrementato ongi volta che un thread acquisice la
+	  lock
+	- decrementato ogni volta che un thread rilascia la 
+     lock
+	- lock viene definitivamente rilasciata quando il 
+	  contatore diventa 0
+	- un thread puo' acquisire piu' volte la lock su uno
+	  stesso oggetto senza bloccarsi
+
+> Read & Write Lock (shared lock) 
+- Sono implementante in java come: 
+	- Interfaccia ReadWriteLock: mantiene una copia di 
+	  lock associate, una per le operazioni di lettura e 
+	  una per le scritture
+		- la read lock puo' essere acquisita da piu' 
+        thread lettori, purche' non vi siano scrittori
+		- la write lock e' ovviamente esclusiva
+- implementazione ReentrantReadWriteLock()
+
+> Thread Cooperation
+L'interazione esplicita tra threads avviene in un
+linguaggio ad oggetti tramite l'uso di oggetti condivisi
+
+- e' necessario
+	- definire un insieme di condizioni sullo stato 
+     dell'oggetto condiviso
+	- implementare meccanismi di sospensione/riattivaz 
+     dei thread sulla base del valore di condizioni
+-- soluzioni possibii
+	- definizione di variabili di condizione
+	- medtodi per la sospensione su queste variabili
+	- la definizione di code associate alle variabili in
+     cui memorizzare i threa sospsesi
+	-- meccanismi di monitoring ad alto livello
+
+> Condition Variables 
+Ad una lock possono eessere associate un insieme di 
+variabili di condizione 
+
+- lo scopo di queste condizioni e' quello di permettere
+  ai thread di controllare se una condizione sullo 
+  stato della risorsa e' verificata o meno
+	- se la condizione e' false ci si sospende,
+	  rilasciando la lock e si inserisce il thread in una
+     coda di attesa di quella condizione
+	- risvegliare un thread in attesa quando la 
+	  condizione e' verificata
+
+- per ogni oggetto diverse code
+	- una per i threads in attesa di acquisire la lock
+	- una associata ad ogni variabile di condizione
+
+- sospensione su variabili di condizione associate ad 
+  un oggetto solo dopo aver acquisito la lock su 
+  quell'oggetto, altrimenti eccezione
+
+- le condition variable sono oggettidi tipo Condition 
+  associati ad un oggetto lock
+- l'interfaccia condition fornisce i meccanismi per 
+  sospendere un thread e per risvegliarlo
+
+- ricordarsi che 
+	- yeld(): indica allo scheduler che il thread 
+	  corrente vuole rilasciare temporaneamente la cpu e
+	  farpassare avanti altri thread pronti. 
+	  E' un indicazione, lo scheduler puo' battersene.
+	  Non rilascia nessuna lock
+
+	- sleep(): thread in pausa per un certo quantitativo
+	  di tempo, anche qui nessuna lock viene rilasciata
+	
+	- await(): su un'istanza di Condition sospende 
+	  l'esecuzione del thread e il lock associato e' 
+	  rilasciato. Rimane sospeso finche' un thread 
+	  notifica un cambiamento di stato nella condizione 
+     (tramite signal() o signalAll()) oppure un altro
+	  thread interrompe il thread (e l'interrunzione e'
+     supportata)

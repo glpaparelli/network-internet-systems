@@ -1,0 +1,270 @@
+-- Lezione 8 -- 
+- Udp e Datagram - 
+
+Connection Oriented vs Connectionless
+- Java socket API: interfacce diverse per udp e tcp
+	- TCP: Stream Socket 
+		- trasmissione vista come uno stream continuo di 
+		  byte provenienti dallo stesso mittente 
+	- UDP: DatagramSocket
+		- trasmissione orientata ai messaggi (1-way msg)
+		- In UDP ogni messaggio, detto Datagram, e' 
+	     indipendente dagli altri e porta l'informazione
+	 	  per il suo instradamento
+		- send, receive di DatagramPacket
+		- ogni ricezione si riferisce ad un singolo 
+	  	  messaggio inviato una unica send. Corrispondenza
+	     tra send e receive: i dati inviati in un solo
+		  send() saranno ricevuti in un solo receive()
+
+- Struttura del Datagram 
+	- datagram: un messaggio indipendente, self contained
+	  in cui l'arrivo ed il tempo di ricezione non sono 
+	  garantiti. 
+	  In java e' modellato come un DatagramPacket
+		- il mittente deve inizializzare 
+			- il campo data
+			- destination IP e port 
+		- tipicamente Source IP inserito automaticamente e 
+	     source posr scelta in modo random
+
+- Java DatagramSocket API 
+- classi per la gestione di UDP 
+	- DatagramPacket per costruire i datagram (sia per
+	  client che per il server) 
+		- usato per riempire e leggere pacchetti 
+		- contiene la destinazione: attenzione alla 
+	     distinzione fra il payload del segemento dalle
+		  classi java
+	- DatagramSocket per creare i socket (sia client che
+	  server) 
+		- invia e riceve DatagramPacket
+		- conosce solo la porta locale su cui ricevere e
+		  inviare
+		- una socket puo' inviare pacchetti a piu' 
+		  destinazioni 
+		- non esiste uno stream tra applicazioni 
+
+- un processo mittente che desidera inviare dati su udp
+  deve istanziare un oggetto di tipo DatagramSocket
+  collegato ad una porta locale
+	- il processo mittente crea il suo socket e lo collega
+	 alla porta PM
+		- PM puo' anche essere una porta effimera, non e'
+	     necessario pubblicarla
+			- porte effimere: porte selezionabili dal SO al
+			  di fuori del range delle well-known
+
+	- il destinatario pubblica la porta a cui e' collegato
+	  il socket di ricezione affinche' il mittente possa 
+	  spedire pacchetti su quella porta
+
+- caratteristiche socket UDP 
+	- il processo puo' usare lo stesso socket per spedire
+	  pacchetti verso destinatari diversi
+	- processi (applicazioni) diverse possono spedire 
+	  pacchetti indirizzati allo stesso socket allocato 
+	  dal destinatario: in questo caso l'ordine di 
+	  arivo dei messaggi non e' garantito, in accordo con
+	  udp.
+
+- UDP in Breve 
+  - Inviare un datagramma 
+	- creare un DatagramSocket e collegarlo ad una porta
+	  locale
+	- creare un oggetto di tipo DatagramPacket in cui 
+	  inserire 
+		- un riferimento ad un byte array contenente i dati
+	     da inviare nel payload del datagramma
+		- indirizzo IP e porta del destinatario
+	- invia il DatagramPacket tramie una send invocata 
+	  sull'oggetto DatagramSocket
+  - Ricevere un datagramma
+	- creare un DatagramSacket e collegarlo ad una porta 
+	  pubblicata (che corrisponde a quella specificata 
+	  dal mittente nel pacchetto) 
+	- creare una DatagramPacket per memorizzare il 
+	  pacchetto ricevuto. Il DatagramPacket contiene un
+	  riferimento ad un byte array che conterra' il 
+	  messaggio ricevuto
+	- invocare una receive sul DatagramSocket passando
+	  il DatagramPacket
+
+- Java Socket UDP 
+	- public class DatagramSocket extends Object 
+	  public DatagramSocket() throws SocketException 
+
+- crea un socket e lo collega ad una porta anonima, il
+  sistema sceglie una  porta non utilizzata e la 
+  assegna al socket
+- costruttore utilizzato generalmente lato client, per 
+  spedire datagrammi
+- per reperire la porta allocata utilizzare il metodo 
+  getLocalPort()
+
+- public DatagramSocket(int p) 
+	- costruttore usato in genere lato server
+	- crea una socket sulla porta specificata - 
+	- solleva un'eccezione quando la porta e' gia usata
+	  o se si tenta di connettere il socket ad una porta
+	  su cui non si hanno diritti
+
+- Send/Receive Buffer
+Ad ogni socket sono associati due buffer: uno per la 
+ricezione ed uno perla spedizione
+	- questi buffer sono gestiti dal sistema operativo, 
+     non dalla JVM. La loro dimensione dipende dalla 
+	  piattaforma su cui il programma e' in esecuzione 
+
+ - receive Buffer
+	- la dimensione deve essere almeno uguale a quella
+	  del Datagram piu' grande che puo' essere ricevuto
+	  tramite quel buffer 
+	- consente di bufferizzare un insieme di Datagram, 
+     nel caso in cui la frequenza con cui essi sono 
+	  ricevuti sia maggiore di quella con cui 
+	  l'applicazione esegue la receive 
+	
+ - send buffer 
+	- la dimensione del sen buffer viene usato per 
+     stabilirela massima dimensione del Datagram
+	- consente di bufferizzare un insieme di Datagram, 
+     nel caso in cui la frequenza con cui essi vengono
+	  generati sia molto alta
+
+DatagramPacket nel dettaglio
+- un oggetto DatagramPacket contiene 
+	- in ogni caso un riferimento ad un vettore di byte, 
+     buffer che contiene i dati da spedire (o da 
+	  receive) 
+	- un insieme di informazioni utilizzate per 
+     individuare la posizione dei dati da estrarre (o 
+	  inserire nel) vettore di byte 
+	- eventuali informazioni di addressing, se il
+	  Datagram deve essere spedito (info sulla dest)
+
+- costruttore per inviare :
+		public DatagramPacket(
+			byte[] buffer, 
+			int length, //n byte da copiari nel buffer
+			InetAddress destination, 
+			int port
+		)
+
+- costruttore per ricezione 
+		public DatagramPacket (byte[] buffer, int length)
+
+- Metodi get e metodi set per la gestione esplicita
+  del buffer e altra roba
+
+> Java: Generazione dei pacchetti 
+- I dati inviati mediante UDP devono essere 
+  rappresentati come vettori di byte
+	- alcuni metodi per la conversione stringhe/vettori 
+	  di byte
+		- Byte[] getBytes() applicato ad un oggetto String
+        restituisce una sequenza di byte che codificano 
+	     i caratteri della stringa 
+		- String(byte[] bytes, int offset, int len) 
+			- costruisce un nuovo oggetto di tipo string
+	        prelevando len byte dal vettore bytes 
+	        partendo da offset
+
+- Java: Inviare e Ricevere Pacchetti 
+  - datagram socket 
+	DatagramSocket clientSock = new DatagramSocket();
+	DatagramSocket serverSock = new DatagramSokcet(p);
+
+	- inviare i pacchetti 
+		- sock.send(DatagramPacket dp) 
+		- dove sock e' il socket attraverso voglio 
+	     spedire il pacchetto dp 
+	- ricezione di pacchetti 
+		- sock.receive(DatagramPacket rp)
+		- dove sock e' il socket attraverso il quale si 
+	     riceve il pacchetto rp 
+
+- comunicazione UDP: caratteristiche
+	- send non bloccante 
+	- receive bloccante 
+		- e' possibile settare un timeout, allo scadere
+        si lancia una InterruptedIOException
+
+- Dati stutturati in pacchetti UDP 
+  public ByteArrayOutputStream()
+  public ByteArrayOutputStream(int size) 
+
+  - gli oggetti istanza di questa classe rappresentano 
+	 stream di byte 
+  - ogni dato scritto sullo stream viene riportato in un
+	 buffer di memoria a dimensione variabile 
+  - quando il buffer si riempe viene raddoppiato 
+    automaticamente
+
+> ad un ByteArrayOutputStream puo' essere collegato un 
+  altro filtro 
+	ByteArrayOutputStream baos = 
+					new ByteArrayOutputStream( );
+	
+	DataOutputStream dos = new DataOutputStream baos)
+
+	- i dati presenti nel buffer B associato ad un 
+	  ByteArrayOutputStream baos possono essere copiati 
+	  in un array di byte, di dimensione uguale 
+     alla dimensione attuale di B
+
+-> analogo per l'input
+
+metodi per la gestione dello stream
+	- int size()
+	- synchronized void reset(): svuota il buffer 
+		- baos.reset()
+	- synchronized byte toByteArray()
+		- non svuota il buffer
+
+UDP e Stream: Riflessioni 
+	- trasmissione connection oriented: una connessione
+     viene modellata con uno stream
+		- invio di dati -> scrittura sullo stream
+		- ricezione di dati -> lettura dallo stream
+
+	- trasmissione connectionless: stream usati per la
+     generazione dei pacchetti 
+		- ByteArrayOutputStream: consentono la conversione
+	     di uno stream di byte in un vettore di byte da 
+	     spedire con pacchetti UDP 
+		- ByteArrayInputStream: converte un vettore di 
+	     byte in uno stream di byte
+
+- UDP con NIO - 
+	UDP Channels
+
+Server Side:
+
+DatagramChannel channel = DatagramChannel.open();
+channel.socket().bind(new InetSocketAddress(9999));
+ByteBuffer buf = ByteBuffer.allocate(48);
+buf.clear();
+// Prepare buffer for writing
+channel.receive(buf)
+
+- modalita' bloccante: la receive si blocca fino a
+  a quando non e' stato ricevuto un DatagramPacket 
+- come la receive di DatagramSocket, ma piu' efficiente
+  traite buffer
+
+- analogo per la scrittura
+- sempre solita possibilita' di multiplexing
+
+
+
+
+
+
+
+
+
+
+
+
+

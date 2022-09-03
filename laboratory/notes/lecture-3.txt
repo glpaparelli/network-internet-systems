@@ -1,0 +1,359 @@
+-- Lezione 3 -- 
+- Sincronizzazione: costrutti di alto livello -
+
+> Lock Implicite o intrinseche
+Java associa ad ogni oggetto una lock implicita ed una 
+coda associata a tale lock
+	- questo era l'unico meccanismo di sincronizzazione
+     prima di java 5
+	- l'acquisizione della lock avveniva mediante metodi
+	  o blocchi di codice synchronized 
+		public synchronized void depositoBancario(int s){
+			...
+		}
+
+- quando il metodo synchronized viene invocato
+	- se nessun metodo synchronized della classe e' in 
+	  esecuzione (ovvero la lock su quell'oggetto e' 
+	  libera) l'oggetto viene bloccato e il metodo 
+	  eseguito
+	- se l'oggetto e' gia' bloccato il thread viene 
+	  sospeso nella coda associata all'oggetto fino a che
+	  il thread che detiene la lock la rilascia
+- la lock e' associata ad un'istanza dell'oggetto
+	- NON ALLA CLASSE
+	- questo significa che metodi di oggetti dello stesso
+	  tipo saranno comunque eseguiti in modo concorrente
+
+- diverse invocazioni di metodi synchronized, sullo
+  stesso oggetto, non sono soggette ad interleaving
+- la lock intrinseca viene acquisita automaticamente al 
+  momento dell'invocazione del metodo synchronized e 
+  rilasciata al suo ritorno
+
+- i costruttori non devono mai essere dichiarati 
+  synchronized
+	- solleva un compilation error
+
+> Synchronized Statement 
+- sincronizzare blocchi di codice, invece che interi 
+  metodi:
+	synchonized(objRef){
+		...
+	}
+	
+	- un thread acquisisce la lock sull'oggetto riferito
+	  da objRef quando entra nel blocco sincronizzato e 
+     la rilascia quando lascia il blocco
+		- solo un thread alla volta esegue quel blocco di 
+	     codice
+
+L'utilizzo di questa meccanica e' ovvio
+
+Object mutex = new Object; 
+
+public void something(){
+	// roba non critica 
+
+	synchronized (mutex){
+		//roba critica
+	}
+
+	//roba non critica
+}
+
+-> notare che nell'esempio sopra mutex e' un campo 
+   privato della classe. Il blocco sincronizzato indica 
+	qualsiasi parte (metodo) della classe che deve 
+   essere eseguita come sezione critica
+
+> Il Monitor 
+Sincronizzazione ad alto livello. 
+- il monitor e' un meccanismo linguistico ad alto livello
+  per la sincronizzazione: classi di oggetti utilizzabili
+  concorrentemente in modo safe
+	- incapsula una struttura condivisa e le operazioni su
+	  di essa
+	- risorsa = oggetto passivo: le sue operazioni vengono
+	  invocate da entita' attive (thread)
+	- mutua esclusione sulla struttura garantita dalla 
+	  lock implicita associata alla risorsa - un solo 
+	  thread per volta si trova "dentro al monitor"
+	- sincronizzazione sullo stato della risorsa garantita
+	  esplicitamente
+	- meccanismi di sospensione/risveglio sullo stato 
+	  dell'oggetto condiviso
+		- simili a variabili di condizione
+	- wait/notify
+
+- il monitor e' un oggetto con un insieme di metodi 
+  synchronized che incapsula lo stato di una risorsa 
+  condivisa
+	- due code gestite in modo implicito
+		- entry set: contiene i thread in attesa di 
+	     acquisire la lock. Inserzione/estrazione dalla 
+	     coda associate ad invocazione/terminazione del
+	     metodo (della risorsa che si prova a usare)
+	- wait set: contiene i thread che hanno eseguito una
+	  wait e sono in attesa di una notify
+		- insersione ed estrazione in/da questa coda 
+        in seguito ad una esplicita invocazione di wait
+        o notify
+
+- i metodi wait() / notify()
+Invocati su un oggetto
+	- appartengono alla classe Object
+	- per invocare questi metodi occorre aver acquisito
+	  precedentemente la lock sull'oggetto su cui sono
+	  invocati: devono quindi essere invocati all'interno
+     di un metodo o di un blocco sincronizzato
+		- altrimenti IllegalMonitorEx()
+	- se non compare il riferimento esplicito all'oggetto
+	  si assume this.
+		- void wait(): sospende il thread in attesa che si
+	     verifichi una certa condizione
+			- a differenza di sleep o yeld la wait RILASCIA
+ 			  la lock acquisita perima di sospendere il 
+	        thread
+			- in seguto di una notifica puo' riacquisire 
+			  la lock
+		- void notify(): notifica ad un thrad in attesa il
+	     verificarsi di una certa condizione
+			- c'e' anche notifyAll()
+	
+- il metodo wait perette di attendere un cambiamento
+  su una condizione
+		- fuori dal monitor!
+		- in modo passivo, evitando il controllo ripetuto
+		  su una condizione
+- poiche' esiste una unica coda implicita in cui vengono
+  accodati i thread in attesa non c'e' modo di 
+  distinguere i thread in attesa per condizioni (di 
+  attesa)
+	- un thread deve ricontrollare se la condizione e' 
+	  verificata dopo essersi risvegliato
+		- differenza con le variabili di condizione
+
+- wait/notify: Regola d'oro per l'utilizzo
+	public synchronized void act() throws InterruptedEx{
+		while(!cond) 
+			wait();
+
+		// fai quello che devi fare
+
+		notifyAll();
+	}
+
+	- si testa la condizione dentro un ciclo!
+
+- se il metodo notify viene invocato quando non vi e' 
+  alcun thread sospeso la notifica viene persa
+- se un thread esegue successivamente una wait() deve 
+  attendere una successiva notifica prima di essere 
+  risvegliato 
+
+- differenze tra notify() - notifyAll()
+	- notify(): riattiva uno dei thread nella coda 
+	  associata all'oggetto su cui si invoca la funzione
+	- notifyAll(): riattiva tutti i thread in attesa 
+	  sull'oggetto. L'oggetto e' quello su cui e' stata 
+	  invocata: i thread vengono tutti messi in stato di
+	  pronto e competono per l'acquisizione della lock
+
+- Monitor vs Lock Esplicite: Confronti
+Vantaggli delle Lock implicite
+	- imposta una disciplia di programmazione per evitare
+	  errori dovuti alla complessita' del programma 
+	  concorrente 
+	- definire costrutti "strutturati" per la gestione 
+	  della concorrenza
+	- maggior robustezza
+Svantaggli
+	- minore flessibilita' rispetto alle lock esplicite
+
+Vantaggli delle Lock esplicite
+- un numero maggiore di funzioni disponibili, maggiore
+  flessibilita' 
+- tryLock() consente di non sospendere il thread se un
+  altro thread e' gia' in possesso della lock, 
+  restituendo un valore booleano
+- shared locks
+	- reader multipli, writer unico
+- migliori performance
+
+> Java Concurrency Framework
+	> Collections
+
+- Java Collection Framework: Ripasso 
+
+- un insieme di classi che consentono di lavorare con
+  gruppi di oggetti, ovvero collezioni di oggetti
+	- classi contenitor
+
+- Collections (CON la s finale) contiene metodi utili 
+  per l'elaborazione di collezioni di qualunque tipo
+	- ordinament
+	- calcolo max e min
+	- rovesciamento, permutazione, riempimento di una 
+	  collezione 
+	- confronto tra collezioni
+	- aggiungere wrapper di sincronizzazione ad una	
+	  collezzione
+
+> Java Collections e Multithreading
+Il supporto per gestire un accesso concorrente agli 
+elementi della collezione (thread safeness) varia da 
+classe a classe
+
+In generale si possono distinguere tre tipi di 
+collezioni 
+	- collezioni che non offrono alcun supporto per il
+ 	  multithreading
+		- dette unshynchronized collections
+	- sychronized collections
+	- concurrent collections
+
+- Synchronized Collections
+La classe collections contiene metodi statici per 
+l'elaborazione delle collezioni
+	- factory methods
+		- input: una collezione
+		- output: la stessa collezione in cui le 
+		  operazioni sono sincronizzate
+		  - List<String> syncList = 
+				Collections.SynchronizedList(newArrayList<>)
+
+- i metodi della collection risultante sono protetti da
+  lock e quindi sono thread safe
+	- attenzione: nessun thread deve accedere all'oggetto
+	  originale (la costruzione come nell'esempio toglie
+	  questo rischio)
+	> synchonizedList() produce un nuovo oggetto List che
+	  memorizza l'argomento in un campo privato
+   - lock sull'intera collezione: degradazione di 
+     performance
+
+- la thread safety gerantisce che le invocazioni delle
+  singole operazioni dela collezione siano thread safe
+	- ma se si vogliono definire funzioni che coinvolgono
+     piu' di una operazione base?
+		- ci possono essere dei problemi
+			- esempio: 
+				if(!syncList.isEmpty())
+					syncList.remove(0);
+			- isEmpty e remove sono sicuramente thread safe
+  			  ma fra le due la lock e' rilasciata, un altro
+		     thread potrebbe prenderla e rimuovere un
+			  elemento generando poi eccezioni
+--> Java Synchronized Collections si dicono 
+	 conditionally thread-safe: le operazioni singole 
+	 sono safe ma le funzioni composte da piu' operazioni
+	 possono essere pericolose
+		- e' richiesta una sincronizzazione esplicita da 
+	     parte del programmatore
+			- per rendere atomica una operazione composta
+ 			  da piu' di una operazione individuale:
+				synchronized(syncList){
+					if(!syncList.isEmpty)
+						syncList.remove(0)
+				}
+		- notare che il thread che esegue l'operazione 
+	     composta acquisice la lock sulla struttura 
+	     syncList piu' di una volta
+			- quando esegue il blocco sincronizzato
+			- quando esegue i metodi della collezione
+				- grazie alle lock rientranti non ci sono 
+				  problemi
+
+Iteratori e Concorrenza
+- anche l'iterazione su una collezione puo' essere vista
+  come una operazione composta da tante operazioni 
+  elementari 
+	- una situazione tipica e' la seguente
+		- un thread sta usando un iteratore su una
+		  collezione
+			- un altro thread modifica la stessa collezione
+			  al momento del reperimento dell'elemento 
+	     	  successivo l'iteratore solleva una 
+	     	  ConcurrentModificationEx
+	- Soluzione: sincronizzare tutta la struttura 
+	  (come gia' visto in precedenza)
+		- mantiene consistente la collezione ma riduce 
+	     di molto la concorrenza
+
+- Concurrent Collections
+Le collezioni sincronizzate garantiscono la thread 
+safety a discapito della scalabilita' del programma
+
+- se si accetta un compromesso sulla semantica delle 
+  operazioni allora e' possibile mantenere un livello
+  di concorrenza tale da garantire una buona 
+  scalabilita' 
+	- concurrent collections
+
+- Il livello di sincronizzazione di una synchronized 
+  collection puo' essere troppo stringente
+	- una hash table ha diversi bucket, perche' devo
+	  sincronizzare tutta la struttura se devo accedere
+	  ad un solo bucket?
+		
+-> Concurrent Collections
+Superano l'approccio "sincronizza l'intera struttura"
+dati tipico delle collezioni sincronizzate, garantendo
+un supporto piu' sofisticato per la sincronizzazione
+	- permettono l'overlapping di operazioni sugli 
+	  elementi della struttura
+	- vantaggio: maggior livello di concorrenza e quindi
+	  miglioramento di performance
+	> al costo della modifica della semantica di alcune
+     operazioni
+
+Concurrent Hash Map
+- lock striping: invece di una sola lock per tutta la 
+  struttura
+	- hash table divisa in sezioni: possibili write 
+	  simultanee se modificano sezioni diverse della 
+	  tabella
+	- utilizzate 16 lock per controllare l'accesso alla
+	  struttura
+	- un numero arbitrario di reader e un numero fisso 
+	  di writer possono convivere 
+
+-- il vantaggio e' ovvio: aumento del parallelismo e 
+   della scalabilita'
+- svantaggi
+	- non si puo' effettuare una lock su tutta la 
+	  struttura
+	- impossibile sincronizzare funzioni composte da 
+	  operazioni elementari a livello utente
+	- approssimazione della semantica di alcune op
+	  (tipo size() o isEmpty())
+
+- la struttura puo' essere modificata mentre viene 
+  scora mediante un iteratore
+	- non e' necessaria la lock su tutta la struttura
+	- non viene sollevata nesusna eccezione
+		- ma le modifiche concorrenti possono non 
+		  risultare visibili all'iteratore che scorre la 
+	     struttura: un iteratore puo'/non puo' catturare
+		  le modifiche effettuate sulla collezione dopo
+	     la creazione di tale iteratore
+			- weakly consistent iterators
+	- non si puo' usare synchronized per bloccare l'
+	  accesso a tutta la struttura 
+
+- per risolvere il problema della sincronizzazione delle
+  operazioni composte da piu' azioni elementari,
+  ConcurrentHashMap offre alcune nuove operazioni 
+  eseguite atomicamente
+	- praticamente scrive delle operazioni singole che
+     fanno quello che farebbe la composizione di op
+	  singole 
+		- putIfAbsent, removeIfEqual ...
+
+
+
+
+
+
+	   

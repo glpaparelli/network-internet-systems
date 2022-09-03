@@ -1,0 +1,435 @@
+-- Lezione 10 --
+- Remote Method Invocation - 
+
+Un'applicazione RMI in generale e' composta da due 
+programmi separati, un client e un server
+	- server 
+		- crea un oggetto remoto e pubblica un riferimento
+	     all'oggetto 
+	- il client
+		- ottiene un riferimento all'oggetto remoto 
+			- e lo usa per invocarne i metodi 
+> l'obiettivo e' permettere al programmatore di 
+  sviluppare applicazioni JAVA distribuite usando la
+  stessa sintassi e la stessa semantica
+  utilizzate per programmi non distribuiti
+	- raggiunto parzialmente: buona trasparenza ma non 
+	  totale.
+
+- Oltre i socket 
+- una applicazione java distribuita
+	- e' composta da computazioni eseguite su JVM 
+	  differenti 
+		- possibilmente in esecuzione su host differenti 
+        che comunicano tra loro 
+			- attenzione: una applicazione multithread non 
+		     e' una applicazione distribuita 
+
+Un socket e' un meccanismo per la programmazione di 
+applicazioni distribuite, ma di basso livello
+	- richiede la progettazione di veri e propri
+	  protocolli di comunicazione e la verifica non 
+	  banale della correttezza di tale protocollo 
+		- la complessita' e' ammortizzata dal meccanismo 
+	     della serializzazione che consente di inviare 
+	     dati strutturati 
+> l'alternativa e' usare una tecnologia di piu' alto 
+  livello, originariamente indicata com RPC, ovvero 
+  Remote Procedure Call
+	- interfaccia di comunicazione rappresentata dall'
+	  invocazione di una procedura remota, invece che 
+	  dall'utilizzo diretto di una socket
+
+- Remote Procedure Call 
+	- paradigma di interazione a domanda-risposta
+		- il client invoca una procedura del server remoto
+		- il server esegue la procedura con i parametri
+	     passati dal client e restituisce a quest'ultimo
+	     il risultato dell'esecuzione 
+		- la connessione remota e' trasparente rispetto a 
+        client e server
+			- in genere sono previsti meccanismi di 
+	        affidabilita' a livello sottostante
+
+> il programmatore non deve piu' preoccuparsi di 
+  sviluppare protocolli vari 
+	- le operazioni sono gestite completamente dal 
+	  supporto
+	- utilizzo di stub o proxy presenti sul client 
+
+def: mashalling: il processo che consiste nella 
+preparazione e nell'impacchettamento dell'informazione
+per la trasmissione.
+- tipicamente:
+	1) il programmatore sviluppa l'interfaccia per RPC
+	2) il generatore di stub prende la definizione della
+	   interfaccia e crea 2 stub, uno per server e uno 
+	   per client
+	3) lo stub del server e quello del client si occupano
+      del marshalling dei parametri, cosi' come per 
+      la comunicazione
+	4) una volta fatto il programma buo' creare i RPC e 
+      il resto dell'applicazione
+
+- Limiti della tecnologia RPC
+	- la programmazione e' essenzialmente procedurale 
+	- la localizzazione del server non e' trasparente 
+	  (il client deveconoscere ip e porta del server) 
+	- non basata sulla programmazione ad oggetti e quindi
+	  mancanto tutte le proprieta' da questa introdotte 
+
+- Remote Method Invocation - 
+Permette di usare oggetti "remoti" (ovvero oggetti che 
+risiedono su altri nodi della rete Internet) come se 
+fossero oggetti come tutti gli altri, senza doversi 
+preoccupare dei protocolli e di tutto il resto
+	- l'uso di oggetti remoti risulta largamente 
+	  trasparente: una volta che e' stato localizzato 
+	  l'oggetto il programmatre lo usa come fosse locale
+	- codifica, decodifica, verifica ... dei dati sono
+	  effettuati dal supporto RMI in modo trasparente 
+
+- Problemi da gestire
+	- il client deve in qualche modo trovare un 	
+	  riferimento all'oggetto remoto (e' diverso dal 
+     creare l'oggetto o farsi passare un riferimento 
+     come parametro)
+	- l'oggetto che vuole rendere i suoi servizi
+     invocabili deve dirlo esplicitamente e rendersi 
+	  reperibile
+
+RMI: Architettura ad alto livello
+L'architettura RMI prevede tre entita' 
+	- registry 
+	- client
+	- server 
+- Il registry e' un servizio di naming che agisce come 
+  le pagine gialle
+	- registra i nomi e i riferimenti degli oggetti i cui
+	  metodi possono essere invocati da remoto 
+	- tali oggetti devono essere registrati (con l'operaz
+     di bind presso il naming service) con un un nome 
+	  pubblico
+	- altri oggetti (client) possono richiedere (fare il 
+	  lookup) di oggetti registrati chiedendo un 
+	  riferimento all'oggetto, a partire dal nome 
+	  pubblico 
+
+- principali operazioni da effettuare rispetto all'uso 
+  di un oggetto locale 
+	- il server deve esportare gli oggetti remoti, il 
+     client deve individuare un riferimento all'oggetto
+	  remoto
+	- il server registra gli oggetti remoti nel
+	  registry, tramite la bind 
+	- i client cercano gli oggetti remoti, tramite la 
+	  lookup, chiedendo a partire dal nome pubblico dell'
+	  oggetto un riferimento all'oggetto stesso al 
+	  registry
+	- il client invoca il servizio mediante chiamate di
+	  metodi che sono le stesse delle invocazioni di 
+	  metodi locali 
+
+- invocazione dei metodi di un oggetto remoto
+	- a livello logico: identico all'invocazione di un 
+	  metodo locale
+	- a livello di supporto: gestita dal supporto RMI che
+	  provvede a trasformare i parametri della chiamata
+     in dati da spedire sulla rete. 
+
+
+> Quando O1 invoca un servizio di O2, lo chiede al suo 
+  proxy ()2 stub, rappresentazione locale di O2) che 
+	- in modo trasparente ad O1 stabilisce una 
+	  connessione Socket TCP con il nodo in cui risiede
+     localmente O2 
+		- in tale nodo di O2, un componente associato ad
+        O2 stesso, detto "skeleton" riceve la 
+	     connessione e la richiesta di servizio e 
+	     provvede a invocarla lui su O2 (skeleton e' il 
+	     rappresentante locale del client)
+		- quando O2 vero risponde lo skeleton manda la 
+	     risposta indietro al proxy, il quale poi 
+		  risponde ad O1 
+
+- RMI: Interfaccia Remote 
+Remote e' l'interfaccia JAVA che dichiara i metodi 
+accessibili da remoto 
+	- sul server: la classe che implementa il servizio
+	- sul client: la classe che implementa il proxy del
+	  servizio remoto
+
+- un'interfaccia e' remota se e solo se estende Remote o
+  un'altra interfaccia che a sua volta estende Remote
+	- e' una tag interface: non definisce nessun metodo,
+     ha il solo scopo di identificare gli oggetti che 
+	  possono essere usati in remoto
+	- i metodi definiti devono dichiarare di sollevare
+ 	  eccezioni remote, della classe RemoteException, 
+	  in aggiunta alle eventuali eccezioni gia' 
+	  lanciabili
+
+NB: i metodi remoti devono dichiarare di sollevare 
+eccezioni RemoteEx - ma il servente non deve sollevare 
+questo tipo di eccezioni
+
+step 1) si definisce una interfaccia remota
+	- ovvero definisci un'interfaccia che estende Remote
+
+step 2) implementazione del servizio remoto 
+	- l'implementazione dei metodi puo' essere effettuata
+	  come per un metodo normale, ma 
+		- tenere presente che l'oggetto remoto ha alcune 
+		  differenze dagli altri oggetti 
+			- le operazioni base sugli oggetti remoti hanno
+	        una semantica diversa da quella degli oggetti
+	        standard, che sono istanze di Object
+			- l'oggetto deve essere esportato
+
+classi del package java.rmi.server 
+UnicastRemoteObject < RemoteServer < RemoteObject < Obj
+
+- A < B significa che A e' sottoclasse di B
+
+soluzione 1) definire una classe che implementa i metodi
+della interfaccia remota ed estenda la classe 
+RemoteServer 
+E' richiesta una esportazione esplicita 
+- Vantaggi: Si eredita la ridefinizione della semantica
+  degli oggetti remoti definita da RemoteServer
+- Svantaggi: a causa dell'ereditarieta' singola non si
+  possono estendere altre classi
+
+soluzione 2) definire una classe che implementi i metodi
+dell'interfaccia remota ed estenda la classe 
+UnicastRemoteObject
+- Simile alla soluzione precedente, stessi vantaggli e 
+  svantaggi 
+	- differenza nell'esportazione dell'oggetto 
+		- il costruttore di UnicastRemoteObject crea 
+	     automaticamente un server socket per ricevere 
+	     le invocazioni di metodi remoti ed inizia ad 
+	 	  attendere invocazioni su di esso
+
+soluzione 3) definire una classe che implementi i metodi
+dell'interfaccia remota senza estendere alcuna delle 
+classi viste
+- richiede esportazione esplicita
+- vantaggi: possibilita' di estendere un'altra 
+  classe
+- svantaggi: semantica degli oggetti remoti demandata
+  al programmatore (overriding di metodi equals, hashc.)
+
+step 3: attivazione del servizio 
+- Il servizio viene creato allocando una istanza dell'
+  oggetto remoto 
+- il servizio viene attivato mediante:
+	- creazione dell'oggetto remoto 
+	- registrazione dell'oggetto remoto in una registry
+
+- RMI: Il registry
+Per creare e gestire direttamente da programma oggetti 
+di tipo Registry usare la classe LocateRegistry, che 
+ha alcuni metodi statici implementati
+	- public static Registry createRegistry(int port) 
+	- public static Registry getRegistry(String host, p)
+
+- createRegistry: lanciare un registro RMI sull'host 
+  locale, su una porta specificata e restituisce un
+  registro 
+- getRegistry: restituisce un riferimento ad un registro
+  RMI su un certo host ad una certa porta p
+	- ottenuto il riferimento al registro si possono 
+	  inocare i metodi definiti dall'interfaccia Registry
+     Solo allora viene creata una connessione col 
+	  registro
+
+- supponiamo di avere un'istanza di un registro r
+	- r.bind()
+		- crea un collegamento tra un nome simbolico ed 
+		  il riferimento ad un oggetto remoto 
+		- se esiste gia' un collegamento per lo stesso 
+		  oggetto remoto dentro r viene sollevata una 
+		  eccezione 
+	- r.rebind() 
+		- crea un collegamento tra un nome simbolico 
+	     ed un riferimento all'oggetto, aggirando il 
+	     problema visto sopra 
+	- r.list()
+		- riceve indirizzo dell'host e numero di porta su 
+	     cui e' in esecuzione il registro 
+		- restituisce un array di stringhe dei nomi dei
+	     server remoti nel registro 
+	- r.lookup()
+		- passa al registro un nome di un servizio remoto
+		- rivece una copia serializzata dello stub 
+		  associato a quel server remoto
+	
+step 4) Il client RMI 
+- per accedere all'oggetto remoto il client 
+	- deve ricercare lo Stub dell'oggetto remoto 
+	- accede al registry attivato sul server mediante il 
+	  nome simbolico dell'oggetto remoto 
+	- il riferimento restituito e' un riferimento allo 
+	  stub dell'oggetto
+		- se si usa la reflection lo stub viene creato 
+		  dinamicamente 
+			- altrimenti ricerca nel classpath e quindi nel
+	  	  	  codebase
+	- il riferimento restituito e' di tipo Generico 
+	  Object: serve casting esplicito
+
+> Generazione dello Stub
+lo stub e' un oggetto che consente di interfacciarsi con
+un altro oggetto target, in modo da sostiuirsi ad esso 
+	- target: oggetto remoto 
+	- lo stub e' un intermediario: inoltra le chiamate 
+	  che riceve al suo target
+
+- per generare un'istanza dello Stub: generare stato 
+  oggetto + metodi dell'oggetto 
+	- meccanismo detto Reflection
+
+- se un'applicazione esporta un oggetto remoto 
+	- invocando il costruttore di UnicastRemoteObject
+	- invocando il metodo Statico exportObject
+> lo stub e' un'istanza della classe Proxy 
+
+-- Il meccanismo delle Callback -- 
+Consente di realizzare il pattern Observer in ambiente 
+distribuito, utile quando 
+	- un client e' interessato allo stato di un oggetto
+	- vuole ricevere una notifica asincrona quando tale
+	  stato viene modificato 
+
+Applicazioni 
+	- un utente partecipa ad una chate vuol essere 
+	  avvertito quando un nuovo utente nel gruppo 
+	- lo stato di un gioco multiplayter viene gestito 
+     da un server 
+	- ...
+
+- Il meccanismo delle callback
+Soluzioni possibile per realizzare nel server un 
+servizio di notifica di eventi al client 
+  1) polling: il client interroga ripetutamente il 
+	  sever, per verificare l'occorrenza dell'evento 
+	  atteso
+		- interrogazione puo' avvenire mediante l'
+	     invocazione di un metodo remoto 
+		- svantaggio: alto costo per l'uso non efficiente
+		  delle risorse del Sistema
+  2) registrazione dei client interessati agli eventi e 
+	  successiva notifica (asincrona) del verificarsi 
+     dell'evento ai client, da parte del server
+		- vantaggi: il client puo' proseguire la sua 
+		  elaborazione senza bloccarsi ed essere avvertito
+	     in modo asincrono quando l'evento si verifica
+		- occorre un meccanismo utilizzato dal server per
+	     risvegliare il client
+
+- Callback via RMI 
+Si puo' utilizzare RMI sia per 
+	- l'interazione client-server
+	- interazione server-client
+		- notifica del verficarsi di un evento
+
+- il server definisce un'interfaccia remota 
+  ServerInterface con un metodo remoto per permettere al
+  client di registrare il suo interesse per un certo 
+  evento 
+	- definisce un oggetto remoto ROS che implementa 
+	  ServerInterface 
+
+- il client definisce una interfaccia remota 
+  ClientInterface con un metodo remoto usato dal server
+  per notificare un evento al client
+	- definisce un oggetto remoto ROC che implementa 
+     ClientInterface 
+
+- Callback via RMI: Il Server 
+	- definisce un oggetto remoto ROS che implementa 
+     ServerInterface 
+	- implementazione del metodo di registrazione
+		- parametro del metodo di registrazione: 
+	     riferimento allo stub del client
+
+- quando riceve una invocazione del metodo remoto: 
+  memorizza il ROC, riferimento all'oggetto del client
+  in una sua struttura dati
+
+- al momento della notifica, utilizza ROC per inviare 
+  il metodo remoto sul client, per la notifica 
+
+- Callback via RMI: Il Client
+	- definisce un oggetto remoto ROC che implementa 
+  	  ClientInterface
+		- contiene un metodo che consente la notifica 
+	     dell'evento atteso
+		- questo metodo verra' invocato dal server
+		- ricerca l'oggetto remoto del server ROS che 
+		  contiene il metodo per la registrazione mediante
+		  un servizio di Registry 
+		- al momento della registrazione sul server,
+	     passa al server lo stub di ROC 
+		- non registra l'oggetto remoto ROC in un 
+	     registr
+	- notifica asincrona implementata mediante due 
+	  invocazioni remote sincrone
+
+- RMI Callbacks: Riassunto 
+- il client crea un oggetto remoto, oggetto callback ROC
+  che implementa un'interfaccia remota che deve essere
+  nota al server 
+- il server definisce un oggetto remoto ROS, che 
+  implementa una interfaccia remota che deve essere nota
+  al client
+- il client recupera ROS mediante il meccanismo di 
+  lookup di un registry 
+- ROS contiene un metodo che consente al client di 
+  registrare il proprio ROC presso il server
+- quando il server ne ha bisogno, recupera un rif a ROC
+  dalla struttura dati in cui lo ha memorizzato al 
+  della registrazione e contatta il client via RMI
+
+> RMI e Concorrenza 
+Analiziamo le caratteristiche di un servizio remoto 
+- non analizzeremo i dettagli di implementazione
+
+L'oggetto puo' essere chiamato da thread diversi, 
+gestiti da RMI 
+	- invocazioni di metodi remoti provenienti da client
+     diversi 
+	- consente di non bloccare un client in attesa dalla
+	  terminazione dell'esecuzione di un metodo invocato
+	  da un altro client
+	- ottimizza la performance del servizio remoto 
+	- invocazioni concorrenti provenienti dallo stesso 
+	  client (ad esempio se le chiamate si trovano in 
+	  due thread diversi del client) possono essere 
+	  eseguite dallo stesso thread o da thread diversi
+
+- la politica di JAVA RMI di implementare in modo 
+  automatico il multithreading di chiamate diverse 
+  presenta il vantaggio di evitare all'utente di 
+  scrivere codice per i thread
+- il server non risulta thread safe: richieste  
+  concorrenti di client diversi possono portare la 
+  risorsa ad uno stato inconsistente
+- l'utente che sviluppa il server deve assicurare che 
+  l'accesso all'oggetto remoto sia correttamente 
+  sincronizzato
+
+(under the hood fuori saltato diretto)
+
+- Code Mobility e Sicurezza
+passi necessari per l'attivazione dei controlli di 
+sicurezza
+	- scrivere un file di policy: il file di policy e'
+     un file di testo e contiene le specifiche della
+     politica di sicurezza che si intende adottare
+
+questo file si passa tramite linea di comando 
+
+
+

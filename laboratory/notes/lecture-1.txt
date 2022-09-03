@@ -1,0 +1,238 @@
+-- Lezione 1 --
+- Thread Programming -
+
+definizione: Processo
+	istanza di un programma in esecuzione
+
+definizione: Thread (light weight proces)
+	flusso di esecuzione all'interno di un processo. Ogni
+	processo ha almeno un thread attivo. 
+	I thread condividono le risorse di un processo
+
+- multithreaded execution in java: 
+	il main thread di un programma puo' attivare nuovi 
+	thread
+
+> il multitasking puo' essere riferito a thread o a 
+  processi
+	- a livello di processo il controllo e' in mano al 
+     sistema operativo (kernel)
+	- a livello di thread il controllo e' anche in mano
+	  al programmatore
+		- esecuzione dei thread
+			- single core: interleaving (meccanismi di time
+			  sharing della cpu)
+			- multicore: piu' flussi di esecuzione in 
+			  parallelo, simultaneita' di esecuzione
+
+I vantaggi del multithreading sono ovvi (e gia' visti a 
+sistemi operativi), cosi' come gli svantaggi (complex di
+debugging, ...)
+
+- Creazione ed attivazione di Thread
+
+Quando si manda in esecuzione un programma Java, la JVM 
+crea un thread che invoca il metodo main del programma
+	- ecco perche' ogni programma ha almeno un thread
+
+Altri thread sono attivati automaticamente da Java 
+(gestore eventi, garbage collector, ...)
+
+> Un thread, come tutto in Java, e' un oggetto. Quindi
+  come si crea ed attiva un Thread 
+	
+1) si definisce un task, ovvero una classe che 
+	implementa la classe Runnable. 
+	A questo punto si crea un oggetto thread e gli si
+   passa il task come parametro del costruttore
+2) si estende la classe thread
+
+> La runnable interface
+
+Contiene solo la segnatura del metodo void run()
+	- ogni classe C che implementa l'interfaccia deve 
+	  fornire un'implementazione del metodo run()
+	- un oggetto istanza di C e' un task: un frammento di
+ 	  codice che puo' essere eseguito da un thread
+		> ATTENZIONE: la creazione di un task non implica
+	     che il thread lo esegua. 
+		  Deve essere invocato il metodo start() sul 
+		  thread a cui e' stato passato il task come 
+		  parametro
+		  - il metodo start segnala allo schedulatore, 
+			 tramite lo schedulatore, che il thread puo' 
+			 essere attivato. L'ambiente del thread viene 
+			 quindi inizializzato
+		  - restituisce immediatamente il controllo al 
+		    chiamante, senza attendere che il thread 
+			 attivato inizi la sua esecuzione
+
+> Thread Demoni
+
+i thread demoni hanno il compito di fornire un servizio
+in background fino a che il programma e' in esecuzione
+	- non sono intesi come parte fondamentale del 
+	  programma ed hanno una bassa priorita'
+
+Quando tutti i thread non demoni sono completati il 
+programma termina (anche se ci sono demoni in 
+esecuzione)
+	- quando gli user thread sono completati (incluso il 
+	  thread main) la JVM termina il programma e i 
+	  thread demoni associati
+> se ci sono thread NON-demoni ancora attivi il 
+  programma NON termina
+
+> Terminazione di programmi concorrenti
+Per determinare la terminazione di un programma java
+	- un programma termina quando terminano tutti i 
+	  threads non demoni che lo compongono
+	- se uno dei thread usa System.exit() per terminare 
+	  l'esecuzione allora tutti i thread muoino
+		- DA EVITARE
+
+- la parte sull'interruzione di un thread la saltiamo
+  (si usa l'istruzione interrupt(), che genera una
+  eccezione che va gestita)
+
+> Thread Pool
+chiaramente sarebbe stupido creare un thread per ogni 
+task. 
+Si hanno (avevano) i seguenti obiettivi
+- definire un limite massimo per il numero di thread che
+  possono essere attivati concorrentemente, cosi' da
+	- sfruttare al meglio i processori disponibili
+	- evitare di avere un numero troppo alto di thread in
+	  competizione per le risorse disponibili
+- diminuire il costo per l'attivazione/terminazione 
+  dei threads
+
+>> concetti generali del thread pool
+L'utente struttura l'applicazione mediante un insieme di
+task
+	- task = segmento di codice che puo' essere eseguito
+     da un esecutore 
+		- task -> un oggetto di tipo Runnable
+	- thread = esecutore di task
+	- thread pool
+		- struttura dati la cui dimensione massima puo'
+		  essere prefissata, contiene riferimenti ad un 
+		  insieme di thread
+		- i thread del thread pool possono essere riusati
+		  per l'esecuzione di piu' task!
+			- la sottomissione di un task al pool viene 
+			  disaccoppiata dall'esecuzione del thread. 
+			  L'esecuzione del task puo' essere ritardata 
+			  se non vi sono risorse disponibili
+
+- L'utente crea il pool e stabilisce una politica per  
+  la gestione dei thread del pool che stabilisce
+	- quando i thread del pool vengono attivati
+		- alla creazione del pool
+		- on demand
+		- all'arrivo di un nuovo task
+		- ...
+	- se e quando e' opportuno terminare l'esecuzione di 
+	  un thread (ad esempio non ci sono task da eseguire)
+- l'utente sottomette i task per l'esecuzione al thread
+  pool
+- il supporto, al momento della sottomissione, puo'
+	- usare un thread attivato in precedenza ed 
+	  attualmente libero
+	- creare un nuovo thread
+	- memorizzare il task in una coda ed eseguirlo in un
+	  secondo mommento
+	- respingere la richiesta di esecuzione dei task
+
+> Java ThreadPool
+Da Java 5.0 e' definita la libreria java.util.concurrent
+che contiene metodi per
+	- creare un thread pool ed il gestore associato
+	- definire la struttura di memorizzazione dei task
+	- definire le politiche per la gestione del pool
+
+- alcune interfacce definiscono servizi generici di 
+  esecuzione
+	- Executors
+	- ExecutorService (extende Executors)
+
+La classe Executor opera come una Factory in grado 
+di generare oggetti di tipo ExecutorService con 
+comportamenti predefiniti. 
+	- i task devono essere incapsulati in oggetti di 
+	  tipo Runnable e passati questi esecutori, mediante
+	  l'invocazione del metodo execute()
+
+> NewCachedThreadPool
+Crea un pool con un comportamento predefinito
+	- se tutti i thread del pool sono occupati nell'
+	  esecuzione di altri task e c'e' un nuovo task da
+	  eseguire allora viene creato un nuovo thread
+	- nessun limite sulla dimensione del pool
+	- se disponibile viene riusato un thread che ha 
+	  terminato il suo precedente task
+	- se un thread rimane inutilizzato per 60 secondi
+	  la sua esecuzione termina
+
+- e' un pool elastico (dimensione infinita ma si 
+  restringe appena puo)
+
+> newFiexedThreadPool()
+	- metodo di classe della classe Executors
+	- newFiexedThreadPool(int n) crea un pool in cui
+		- vengono creati n thread al momento della 
+	     inizializzazione del pool, che verranno usati
+		  per i futuri task
+		- quando viene sottomoesso un task T
+			- se tutti i threads sono occupati ad eseguire
+           altri task allora T viene inserito in una 
+			  coda, gestita automaticamente dall'ExService
+			- la coda e' illimitata
+
+> Creazione - Attivazione Thread: Metodo 2 
+Si crea una classe C che estende la classe Thread ed 
+effettua l'overriding del metodo run();
+	- istanziare un oggetto di tipo C: questo oggeto e'
+	  gia' di per se un thread il comportamento e' gia'
+     definito dal metodo run overridato
+	- per farlo partire si invoca il metodo start
+
+- non ci sono vantaggi reali fra scegliere un metodo 
+  rispetto ad un altro, l'unica cosa e' che Java non 
+  ha ereditarieta' multipla: una classe puo' solo avere
+  un padre
+	- estendere Thread ti impedisce di estendere ogni 
+	  altra classe
+	- al contrario si possono implementare tutte le 
+	  interfacce che si vogliono
+
+> Interazione fra Thread: Blocking Queue
+- una coda "thread safe" per quanto riguarda gli 
+  inserimenti e le rimozioni
+	- il produttore puo' inserire elementi nella coda
+	  fino a che la dimensione della coda non raggiunge
+	  un limite, dopo di che si blocca e rimane bloccato
+	  fino a quando un consumatore non rimuove un 
+	  elemento
+	- il consumatore puo' rimuove elementi dalla coda ma 
+	  se tenta di eliminare un elemento dalla coda vuota
+     si blocca fino a che il produttore inserisce un 
+	
+- BlockingQueue e' un'interfaccia, alcune delle 
+  implementazioni disponibili sono
+	- ArrayBlockingQueue
+	- DelayQueue
+	- ...
+
+
+
+
+
+
+
+
+
+
+
+
+

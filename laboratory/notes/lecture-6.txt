@@ -1,0 +1,269 @@
+-- Lezione 6 -- 
+- Indirizzi IP e stream socket - 
+
+- Network application 
+Due o piu' processi (non thread) in esecuzione su host
+diversi, distribuiti geograficamente sulla rete, 
+comunicano e cooperano per realizzare una funzionalita'
+globale
+	- cooperazione: scambio informazioni utile per
+  	  perseguire un obiettivo globale: quindi la 
+	  cooperazione implica la comunicazione
+	- comunicazione: utilizza protocolli, ovvero insieme 
+ 	  di regole che i partner devono seguire per 
+	  comunicare correttamente
+		- noi useremo i protocolli di livello trasporto
+			- connection-oriented: TCP 
+			- connectionless: UDP 
+
+- Socket: Uno standard di comunicazione
+	- temrmine usato in tempi remoti in telefonia
+		- il jack che le operatrici collegavano in n 
+        postazioni nel mondo per instaurare di fatto un 
+	     collegamento diretto fra 2 interlocutori
+
+- Socket Classes in Java
+	- connection-oriented (TCP)
+		- si sfruttano gli stream per modellare la 
+	     connessione
+		- Client side: Socket Class
+		- Server side
+			- ServerSocket (per accettare connessioni)
+			- Socket (per la connessione instaurata)
+	- connectionless (UDP)
+		- nessuna garanzia di consegna ...
+		- DatagramSocket class sia per il client che per 	
+		  il server
+
+- Indirizzamento a livello di processo
+ - identificazione di un processo con cui comunicare
+	- rete dentro la quale si trova l'host su cui e' in 
+	  esecuzione il processo con cui si vuole comunicare
+	- host dell'host
+	- processo in esecuzione sull'host 
+
+ - ogni comunicazione e' quindi identificata dalla 
+   quintupla
+	- protocollo (tcp o udp)
+	- indirizzo IP del computer locale
+	- porta locale 
+	- indirizzo computer remoto (server)	
+	- porta remota 
+
+- Indirizzi IP e Nomi
+Gli indirizzi IP semplificano l'elaborazione effettuata
+dai router, ma sono poco leggibili per gli utenti della
+rete 
+	- Identificativi di risorse a livello applicativo: 
+	  nome simbolico ad ogni host della rete 
+		- a lvl 3 l'identificativo e' l'IP
+	- si unsa uno spazio di nomi generico
+		www.google.it
+	- livelli della gerarchia separati dal punt
+		- i nomi sono interpretati da desta a sx 
+			- dal piu' specifico al meno specifico
+- indirizzi a lunghezza fissa verso indirizzi a lunghezza
+  variabile 
+- DNS: traduce i nomi simbolici in indirizzi IP
+
+- Indirizzamento a livello di processi
+Su ogni host possono essere attivi contemporaneamente 
+piu' servizi 
+	- ogni servizio viene incapsulato in un diverso 
+	  processo
+	- l'indirizzamento di un processo avviene grazie alle
+     porte 
+		- un numero compreso tra 1 e 65535 
+		- da 1 a 1023 sono porte dedicate a servizi tipici
+		  (well known services: http, ...)
+
+-> La classe InetAddress 
+- Usata dalle altre classi di networking (Socket, 
+  ServerSocket, ...) rappresenta gli indirizzi Internet
+  come 
+	- String hostName: nome simbolico di un host
+	- int address: intero che rappresenta l'IP dell'host
+
+> non sono definiti costruttori, fornisce 3 metodi 
+  statici per costruire oggetti di tipo InetAddress 
+	- public static InetAddress.getByName(String hName)
+		- cerca l'IP corrispondente all'hName e ritrona
+   	  un oggetto InetAddress
+		- richiede una interrogazione al DNS
+	- public static InetAddress.getAllByName(String hN)
+	- public static InetAddress.getLocalHost()
+
+- overriding object methods 
+Come tutte le classi, la classe InetAddree ereditato da
+Object 
+	- effettua l'overriding di 3 metodi base
+		- equals(): un oggetto InetAddress e' uguale ad un
+	     altro oggetto dello stesso tipo se e solo se
+			- rappresentano lo stesso host
+	- hashCode(): converte 4bytes dell'indirizzo in un 
+	  int 
+	- toString(): restituisce nome host/ip
+
+- Network Interface 
+Ogni host di una rete IPv4 o IPv6 e' connesso alla rete
+mediante una o piu' interfacce
+	- ogni interfaccia e' caratterizzata da un indirizzo
+	  IP
+	- se un host ha piu' interfacce allora si hanno piu'
+	  indirizzi ip
+
+- multi-homed hosts: un host che possiede un insieme di 
+  interfacce verso la rete, e quindi da un insieme di 
+  indirizzi IP, sono host tipo
+	- gateway tra sottoreti IP 
+	- router 
+
+	- public static NetworkInterface getByAddress(
+			InetAddress) 
+	  restituisce un oggetto NetworkInterface che 
+	  rappresenta la network interface collegata ad un 
+	  indirizzo IP (o null)
+
+- indirizzo di Loopback
+127.0.0.1 detto indirizzo di Loopback
+	- utilizzato per il testing 
+	- quando si usa un indirizzo di Loopback si possono
+     eseguire client e server in locale, sullo stesso
+	  host
+
+- Il paradigma Client/Server
+	- servizio 
+		- software in esecuzione su una o piu' macchine
+		- fornisce l'astrazione di un insieme di op
+	- server
+		- istanza di un particolare servizio in esecuzione
+	     su un host 
+	- client
+		- un client che sfrutta i servizi forniti dal 
+	     server
+
+-> TCP Socket Programming 
+1) Il server crea una welcoming socket ch consente di 
+   ricevere la richiesta di contatto del client 
+2) Il client contatta il server (che deve essere in 
+   esecuzione e pronto a ricevere clien) creando una 
+   socket, specificando IP e porta del server 
+3) Il server riceve la richiesta sulla welcoming socket
+   e crea una nuova connection socket associata al 
+   client 
+		- ora client socket e la nuova server socket sono
+	     collegate e possono essere usate per comunicare
+
+> Il protocollo TCP: Java Stream Socket 
+il client crea una socket per richiedere la connessione
+- esistono due tipi di socket TCP, lato server
+	- welcome (passive, listening) socket: usata dal 
+	  server per accettare richieste di connessione
+	- connection (active) socket: supportano lo streaming
+	  di byte tra client e server 
+
+- quando il server accetta una richiesta di connessione
+	- crea a sua volta un proprio active socket che 
+	  rappresenta il punto terminale della sua 
+	  connessione con quel client 
+	- la comunicazione vera e propria avvienemediante
+     la coppia di active socket (una nel client e una 
+	  nel server)
+
+- Java Socket 
+- il server pubblica un proprio servizio associandolo al
+  listening socket, creato sulla porta remota PR
+- il client C che intende usufruire del servizio deve
+  conoscere l'indirizzo IP del server, SIP, ed il 
+  riferimento alla porta remota PR a cui e' associato il
+  servizio
+
+- la richiesta di creazione della socket produce in modo
+  atomico la richeista di connessione al socket 
+- il protocollo di richiesta della connessione viene 
+  completamente gestito dal supporto
+	- quando la richiesta viene accetta dal server, il 
+	  supporto crea automaticamente un nuovo active 
+	  socket AS 
+	- AS e' usato per l'interazione con il client. Tutti
+	  i messaggi spediti dal client vengono diretti 
+     direttamente sulla nuova socket 
+
+Java Socket API: lato client 
+- costruttori 
+	- public socket(inetAddress host, int port) 
+		- crea una active socket e tenta di stabilire 
+		  una connessione con <host, port>. 
+		  Se la connessione viene rifiutata lancia  un 
+	     eccezione di IO
+
+> lato Server
+- ServerSocket
+	- un socket speciale che aspetta delle connessioni
+		- non sa in anticipo ne chi sono i client ne 
+   	  quando arriveranno
+	- il server socket esiste ed e' attivo anche senza 
+	  nessun client 
+	- i ServerSocket non sono usati per trasmettere 
+     dati, servono solo ad aspettare e a negoziare la 
+     connessione con nuovi client. 
+	- costruttori 
+		- public ServerSocket(int port)
+		- public ServerSocket(int port, int length) 
+			- costruisce una listening socket associandola
+	        alla porta port 
+			- length: lunghezza della coda su cui vengono
+	        memorizzate le richieste di connessioni. 
+			  Se la coda e' piena le richieste sono 
+	        rifiutate 
+
+		- public ServerSocket(int port, int len, 
+				InetAddress bindAddress) 
+			- permette di collegare il socket ad uno 
+	        specifico indirizzo IP locale
+				- e' utile per macchine dotate di piu' 
+			     schede di rete (e quindi con piu' IP) 
+
+- per accettare una nuova connessione dal connection
+  socket si usa
+	- public Socket accept()
+		- quando il processo server invoca accept() pone
+	     il server in attesa di nuove connessioni
+			- se non ci sono richieste si blocca 
+		- all'arrivo di una richiesta il processo si
+	     sblocca e costruisce un nuovo socket S tramite
+	     cui avviene la comunicazione vera tra client e 
+	     server
+
+- Stream Based Communication
+- dopo che la richiesta di connessione viene accettata, 
+  client e server 
+	- si associano stream di byte input/output all'
+	  active socket 
+		- gli stream sono unidirezionali si hanno 2
+   	  stream (uno in e uno out) per ogni socket
+		- la comunicazione avviene mediante la
+	     scrittura/lettura di dati sullo stream 
+		- eventuale utilizzo di filtri agli stream 
+	- SendBuffer e ReceiveBuffer sono le implementazioni 
+     dei buffer TCP nello stack di rete del S.O
+
+Modellare una connessione mediante gli Stream 
+- Per associare uno stream di input o di output ad 
+  un socket 
+	- public InputStream getInputStream() throws IOEx
+	- analogo per output
+
+- ogni valore scritto sullo steam di output associato al
+  socket viene quindi copiato nel send buffer
+- analogo per input
+
+> Multithreaded Server < 
+Un metodo per gestire le richieste di tanti client in 
+modo concorrente 
+	- diverse soluzioni
+		- un thread per un client, n client n thread 
+		  dedicati
+			- metodo idiota
+		- soluzione 1 -> si usa un thread pool 
+		- vedi prossime lezioni (7 e 8) 

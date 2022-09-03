@@ -1,0 +1,293 @@
+-- Lezione 5 -- 
+- JSON, Non Blocking IO - 
+
+> Da Stream di Byte a Stream di Caratteri
+- InputStreamReader
+	- assume che i caratteri nel file siano codificati
+     usando la codifica di default adottata dalla 
+	  piattaforma locale
+	- converte i caratteri dalla codifica locale ad 
+	  Unicode-UTF-16 mentre scorre il file
+	- permette di specificare un encoding particolare,
+     cosi' che possa essere usato un insieme diverso da
+     quelo di defualt
+
+- i file di testo sono generati con tool alternativi
+- caratteri provenienti da input codificati secondo la 
+  piattaforma su cui Java viene eseguito
+
+> Java: Filter Stream 
+System.in e System.out (standard in e standard out) sono 
+istanze di InputStream e OutputStream, rispettivamente
+	- nella prima versione di Java solo stream di byte:
+     prima dell'introduzione di Reader e Writer
+
+> Serializzazione: Interoperabilita'
+- non vincolare chi scrive e  chi legge allo stesso
+  linguaggio
+	- formati per la serializzazione dei dati che 
+	  consentono l'interoperabilita' tra linguaggi e 
+     macchine diverse
+		- xml
+		- json 
+
+--> Interoperabilita': JSON
+- formato lightweight per l'interscambio di dati, 
+  indipendente dalla piattaforma (in quanto e' di fatto
+  testo
+	- non dipende dal linguaggio
+	- e' un formato self describing 
+	- basato su 2 strutture 
+		- coppie <k, v>
+		- liste ordinate di valori
+
+<come funziona il json viene dato per buono>
+
+-- Java NIO -- (roba seria) 
+- obiettivi 
+	- incrementare le performance dell' I/O
+	- fornire un insieme eterogeneo di funzionalita' per 
+	  la gestione I/O
+	- aumentare l'espressivita' delle applicazion
+
+- non sempre semplice da usare 
+	- miglioramento di perfomance: definizione di 
+	  primitive "piu' vicine" ai livelli piu' bassi di
+	  astrazione
+	- risultati dipendenti dalla piattaforma su cui si 
+	  eseguono le applicazion
+	- maggior sforzio di progettatione rispetto a I/O base
+	- MA primitive espressive, adatte per lo sviluppo di 
+ 	  applicazioni che devono gestire un alto numero di 
+     connessioni di rete
+
+- NIO: Costrutti di Base 
+- Canalie Buffer
+	- l'I/O standard e' basato su stream di byte o di 
+     caratteri a cui possono essere applicati dei filtri
+	- NIO opera su buffer e channel
+	- trasferimento di dati da canali a buffer e viceversa
+ 	- gestione esplicita dal buffer da parte del dev 
+
+- un channel e' simile ad uno stream 
+	- i dati possono essere letti dal channel in un buffer
+	- viceversa i dati vengono scritti dal buffer in un
+     channel
+
+> Selectors (li vedremo la prossima lezione) 
+	- oggetto in grado di monitorare un insieme di canali
+	- intercettazione di eventi provenienti da diversi 
+	  canaliL dati arrivati, apertura di una connessione, 
+     ...
+
+- NIO Channel
+	- simili agli stream, ma 
+		- 2-way comunication 
+		- scatter read: distribuisce i dati letti da un 
+	     canale in uno o piu' buffer
+		- gatherwise write: scrive su un canale i dati 
+	     recuperati da piu' buffer
+		- trasferimenti diretti tra canali
+
+I canali rappresentano connessioni con entita' capaci di
+eseguire operazioni di I/O. 
+- Channel e' un interfaccia che e' radice di una 
+  gerarchia di interfacce
+	- API per i channel usa principalemnte interfacce 
+	  JAVA
+	- le implementazioni usano principalmente codice 
+	  nativo
+
+- FileChannel: legge/scrive dati su un File
+- DatagramChannel: legge/scrive dati sulla rete via 
+  UDP
+- SocketChannel: legge/scrive dati via TCP 
+- ServerSocketChannel: attede richieste di connessioni
+  TCP e crea una SocketChannel per ogni connessione 
+  creata 
+
+- Channel e Stream: Confronto
+I channel sono bidirezionali
+	- lo stesso Channel puo' sia leggere che scrivere sul
+     dispositivo
+	- piu' vicino alla reale implementazione del sistema
+	  operativo
+
+- tutti i dati gestiti tramite oggetti ditipo buffer
+	- non si legge/scrive direttuamente su un canale ma 
+	  si passa da un buffer
+
+
+- possono essere bloccanti o meno
+	- non bloccanti: utili per comunicazioni in cui i 
+	  dati arrivanoin modo incrementale
+	- tipiche dei collegamenti di rete
+	- minore importanza per letture da file, i
+     FileChanel sono bloccanti 
+
+- e' possibile il trasferimento diretto da Channel a 
+  channel, se aleno uno dei due e' un FileChannel
+
+> FileChannels 
+Oggetti di tipo FileChannel possono essere creati 
+direttamente usando 
+	- FileChannel.open()
+	- dichiarare il tipo di accesso al channel (R/W) 
+
+- FileChannel API e' a basso livello: solo metodi per 
+  leggere e scrivere byte
+	- lettura e scrittura richiedono come parametro un 
+     ByteBuffer
+	- operazioni bloccanti
+
+Bloccanti e thread safe
+	- piu' thread possono lavorare in modo consistente 
+	  sullo stesso channel
+	- alcune operazioni possono essere eseguite in 
+	  parallelo (es: read), altre vengono automaticamente
+     serializzate 
+	- ad esempio le operazioni che cambiano dimensione
+     del file o il puntatore sul file sono eseguite in 
+	  mutex
+
+- NIO Buffers 
+> Buffer: contenitori di dati di dimensione fissa 
+	- contengono i dati appena letti o che devono essere
+     scritti su un channel
+	- oggetti della classe java.nio.buffer, che fornisce
+     un insieme di metodi che supportano la sua gestione
+	- non thread safe 
+
+- input 
+	- il channel scrive nel buffer e il programma legge
+	  dal buffer
+- output
+	- il programma scrive nel buffer e il channel legge
+     dal buffer
+
+- Allocazione di Buffer
+Diverse soluzioni 
+	- in un array privato dentro l'oggetto Buffer
+		- ByteBuffer buf = ByteBuffer.allocate(10) 
+	- in un array creato dal dev (wrapping)
+		- byte[] backingArray = new byte[100]
+		  byteBuffer bBuf = ByteBuffer.wrap(backingArray)
+
+- ogni modifica al buffer e' visibile nell'array e 
+  viceversa
+
+- con buffer diretti, direttamente nello spazio di 
+  memoria nativa del kernel, all'esterno dell'heap della
+  JVM 
+	ByteBuffer directBuf = ByteBuffer.allocatedirect(n)
+
+> Il problema dell'IO e la gestione dei buffer
+- La JVM effettua una read e provoca una sys call
+- il kernel invia un comado al disk controller
+- il disk controller, via DMA, scive direttamente un 
+  blocco di dati nella kernel memory 
+- i dati sono copiati dal kernel buffer nello user space
+  (dentro la JVM)
+- Buffer definiti implicitamente o esplcitamente nello
+  user space consentono trasferiento di chunk di dati
+
+> Direct Buffer 
+- direct buffer: allocati fuori la JVM,nella memoria 
+  gesttita dal SO, riduce il numero di copie del dato
+  letto 
+- accesso diretto dalla kernel memory da parte della jvm
+- la JVM esegue, in modalita' best effort, operazioni
+  native di I/O direttamente sul buffer. Tentare quindi
+  di evitare di copiare i contenuti da (o verso) il 
+  buffer in corrispondenza dell'invocazione di 
+  operazioni di I/O native
+
+- Stato del Buffer
+Lo stato interno del buffer e' caratterizzato da alcune 
+variabili, modificate tramite alcuni metodi 
+
+- position: posizione attuale nel buffer che individua 
+  il prossimo elemento da leggere / scrivere
+	- relativi get e set
+
+- capacity: dimensione massima del buffer - read onlu
+	- get 
+
+- limit: limite per leggere/scrivere - anche sela dim
+  totale e' piu' grande, questo attributo controlla
+  la posizione massima	
+	- get e set
+
+> Buffer Management 
+	- capacity + 1 
+		- capacita' massima del buffer
+		- non dipende dalla modalita'
+
+	- mark 
+		- puntaad una posizione del buffer
+		- position assume il valore di mark mediante 
+		  l'operazione di mark
+	
+	- position: dipende dalla modalita'
+		- buffer in write mode
+			- posizione da cui si deve cominciare a 
+			  scrivere 
+			- inizializzata a zero ed incrementata
+		- buffer in lettura 
+			- posizione da cui si deve leggere
+
+	- limit: dipende dalla modalita'
+		- scrittura: indica quanto spazio rimane per 
+		  scrivere
+		- lettura: indica quanti dati posso leggere
+
+	- flip: per passare da modalita' scrittura a lettura
+   	- limit diventa il puntatore all'ultimo elemento
+	     da leggere
+		- assegna Position a Limit
+		- setta Position a 0 
+	
+	- clear: ritorna in modalita' scrittura 
+		- limit = capacity
+		- posiition = 0	
+			- i dati non sono eliminati ma verranno 
+			  sovrascritti
+
+	- compact: ritorna in modalita' scrittura compattando
+	  il buffer
+
+- NIO Buffers
+- solo buffer di byte possono essere usati per le 
+  operaziondi di I/O
+	- pero' e' possibile offrire un sacco di viste di un
+	  byte buffer
+
+--> Buffer Views 
+- supponiamo di avere un file che memorizza caratteri
+  in unicode. Leggiamo alcuni caratteri e li mettiamo in
+  un byteBuffer
+	- CharBuffer charBuf = byteBuffer.asCharBuffer
+  crea un avista del buffer originario
+
+> Possibile estrarre byte da un ByteBuffer ed
+  interpretarli come dati primitvi
+	int fileSize = byteBuffer.getInt()
+
+- Direct Channel Transfer 
+Copy-O transfer: possibilita' di connettere direttamente
+2 canali e di trasferire direttamente dati dall'uno 
+all'altro
+	- uno fra il channel di dest e quello sorgente deve
+     essere un FileChannel
+	- il trasferimento e' implementato a kernel space
+
+
+
+
+
+
+
+
+
+
+

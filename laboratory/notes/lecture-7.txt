@@ -1,0 +1,392 @@
+-- Lezione 7 --
+- TCP Socket con NIO -
+> uno degli obiettivi di NIO
+	- non blocking mode e multiplexing 
+		- creazione di server che scalano bene anche in 
+		  casi di migliaia di connessione e che possono 
+	     beneficiare di processori multicore
+
+- Blocking I/O
+Operazioni bloccanti su stream: il thread rimane bloccato
+fino a che 
+	- accept(): non viene stabilita una nuova connessione
+	- write(byte[] buffer): tutto il contenuto del buffer
+	  e' spedito sulla rete 
+	- read(): e' stato letto un byte
+
+- Socket Channels 
+- caratteristiche diverse rispetto ai FileChannels, 
+  perche possono 
+	- operarei in modalita' non bloccante
+	- essere selezionati tramite un Selector 
+
+- le applicazioni sviluppate con SocketChannels, 
+  specialmente i web server, sono organizzate da maggior
+  - flessibilita'
+  - scalabilita'
+
+- Selector 
+	- pochi threads possono gestire un botto di 
+	  connessioni con client diversi
+		- performance tuning
+
+> ServerSocketChannel 
+analogo a ServerSocket, ma con una interfaccia channel
+based, con alcune caratteristiche 
+	- blocking: comportamento analogo a ServerSocket ma 
+     con interfaccia buffer-based 
+	- non blocking: l'accept ritorna immediatamente il 
+	  controllo al chiamente e puo' restituire
+		- null se non sono presenti richieste di 
+	     connessione
+		- un oggetto SocketChannel altrimenti
+
+- ogni SocketChannel ha associato un oggetto socket della
+  libreria java.net (riuso del codice) 
+
+- il socket associato al channel puo' essere reperito 
+  medianteil metodo socket()
+
+- ServerSocketChannel ssCh = ServerSocketChannel.open()
+  ssCh.socket().bind(new InetSockAddress(5000))
+
+- modalita' non blocking lato server
+	- e' utile per gestire piu' socket 
+	- e' una valida alternativa all'utilizzo di un thread
+     per ogni connessione 
+
+- SocketChannel
+Creazione di un SocketChannel
+	- implicita: creato quando una connessione viene 
+     accettata su una ServerSocketChannel
+	- esplicita, lato client, quando si apre una 
+     connessione verso un server 
+
+SocketChannel socketChannel = SocketChannel.open();
+socketChannel.connect(new InetSocketAddress("url", 80));
+
+InetSocketAddress puo' essere specificato direttamente
+nella open, in questo caso viene effettuata 
+implicitamente una connect
+	- modalita' blocking/non blocking 
+		SocketChannel.configureBlocking(false) 
+
+- Chiusura di una socket channel 
+	- socketChannel.close 
+
+- Lettura da una SocketChannel
+	- ByteBuffer buf = ByteBuffer.allocate(40)
+	  int bytesRead = socketChannel.read(buf);
+		- la read restituisce il numero di byte letti. Se
+	     viene restituito -1 e' stata raggiunta la fine 
+	     dello stream e la connessione viene chiusa
+
+- scrittura in una socket channel
+	- il metodo write() e' richiamato dentro un ciclo: non
+  	  ci sono garanziedi quanti byte sono scritti nel 
+	  channel. Si ripete quindi write() finche' nel buffer
+	  non ci sono piu' byte da scrivere
+
+- ServerSocketChannel
+Resta in ascolto di richieste di connessione 
+	- crea nuove SocketChannel per la gestione della 
+     connessione 
+	- non trasferisce mai dati direttamente
+
+- Non blocking Connect
+Connect se in modo non blocking puo' restituire il 
+controllo alchiamante prima che venga stabilita la
+connessione 
+	- isAcceptable restituisce vero quando la connessione
+	  puo' essere accetta
+
+- finishConnect() 
+Serve per controllare la terminazione della operazione
+
+- Server Models - 
+Criteri per la valutazione delle prestazioni di un 
+server 
+	- scalabilita': capacita' di servire un alto numero
+	  di client che inviano richieste concorrentemente
+	- acceptance latency: tempo tra l'accettazione di 
+	  una richiesta da parte di un client e la successiva
+	- reply latency: tempo richiesto per elaborare una 
+     richiesta ed inviare la relativa risposta
+	- efficiency: utilizzo delle risorse utilizzate sul 
+     server
+
+- Single Thread Model 
+Un solo thread per tutti client 
+	- scalabilita': nulla 
+	- accept latency: altissima 
+	- reply latency bassa: tutte le risorse per un thread
+	- efficiency: buona 
+
+	- e' un modello in genere inapplicabile, tolti casi
+     rari in cui un utente rimarra' collegato pochissimo
+		- server che risponde alla domanda "che ore sono"
+
+- Un thread per ogni connessione 
+	- scalabilita': possibilita' di servire diversi 
+	  client in maniera concorrente, fino al max numero 
+	  di thread previsti per ogni processo
+		- ogni thread alloca il proprio stack: memory 
+	  	  pressure
+	- accept latency: tempo tra l'accettazione di una 
+     connessione e la successiva e' in genere basso 
+	  rispetto a quello interattivo delle richieste
+	- reply laency: bassa, le risorse del server c
+	  condivise tra connessioni diverse 
+	  Ragionevole uso di CPY e RAM per centinaia di 
+	  connessioni, se aumento c'e' un degrado
+	- efficiency: bassa - ogni thread puo' essere 
+	  bloccato ma comunque usare ram, ...
+
+- Se il server monitora un grande numero di cliet una
+  cosa cosi' ti esplode per ovvi motivi
+
+- Numero Fisso di Thread
+Utilizzo di un thread pool 
+	- scalabilita': limitata al numero di connessioni
+     coontemporanee di connessioni supportate
+	- reply latency: bassa fino al numero massimo di
+	  thread consentiti dal thread pool, poi comincia
+	  a degradare
+	- efficientcy: trade-off rispetto al modello 
+	  precedente
+
+- Non Blocking IO
+- una delle funzioni piu' importanti di NIO
+	- l'operazione di IO restituisce subito il controllo
+ 	  al chiamante 
+		- non blocking read: se ci sono byte da leggere
+        li legge, altrimenti torna 0 
+	- usando le funzionalita' non blocking il programma
+	  deve ripetere le operazioni in loop fino al 
+     completamento delle operazioni
+	- Se ci sono piu' operazioni da eseguire uno deve
+     iterare tra tutti i channel 
+		- non e' per niente efficiente 
+			- tante operazioni I/O, active loop, ...
+	- LA soluzione MIGLIORE sono i SELETTORI
+
+- Java NIO: Scalable Server 
+Un selettore e' un componente che esamina uno o piu' 
+NIO Channel e determina quali canali sono pronti per 
+leggere/scrivere
+
+- piu' connessioni di rete gestite mediante un unico 
+  thread, consente di ridurre
+	- thread switching overhead
+	- uso di risorse per thread diversi
+- miglioramento di performance e scalabilita' (numero di
+  thread basso anche con migliaia di socket)
+
+- unico svantaggio: architettura piu' complessa da 
+  capire e da implementare 
+
+- Multiplexed Server 
+ - Selector: componente JAVA che puo' esaminare uno 
+   piu' NIO channel e determinare se sono pronti per un'
+   operazione 
+		- readiness selection
+		- "fire an event": segnalazione che un canale e'
+        pronto per una operazione 
+		- consente di implementare multiplexing 
+			- gestione da parte dello stesso thread di piu'
+			  eventi che possono avvenire simultaneamente
+
+  - i selettori sono oggetti che facilitano il 
+    multiplexing dei channel 
+		- multiplexer per channel selezionabli: capace di 
+	     selezionarei canali pronti, dalla lista di 
+	     channel registrati
+	- a questo punto il programma puo' iterare tra i 
+	  i channel pronti ed eseguire leoperazioni in modo 
+	  non blocking 
+		- il selettore quindi garantisce che le operazioni
+   	  non saranno inutili 
+	- per esere usati con i selettori, i channel devono
+	  essere selezionabili: esendere la classe 
+	  SelectableChannel
+
+- SelectableChannel
+	- classe astratta di base per channel che possono 
+     essere usati con i selettori
+		- metodi per impostare comportamento blocking o 
+	     non blocking dei channel 
+		- metodi per la registrazione con un selettore
+		- alla creazione tutti i channel sono bloccanti
+			- un channel deve diventare non bloccante prima
+	   	  di essere registrato con un selettore
+
+- Selector: Registrazione dei Canali 
+	- supportato da due classi principali 
+		- Selector: fornisce le funzionalita' di 
+	     multiplexing 
+		- SelectionKey: identifica i tipi di eventi pronti
+	     per essere elaborati
+
+- per utilizzare un selettore
+	- creare il selettore
+	- registrare i canali su quel selettore
+	- selezionare un canale quando e' disponibile 
+
+- Selector open(): crea un selettore usando l'implement.
+  di default del sistema
+- void close: chiude il selettore
+- boolean isOpen() verifica se il selettore e' aperto
+
+- Registrazione dei canali su selettori 
+	- operazione: applicata ad un oggetto canale non 
+	  bloccante richiede 
+		- il selettore
+		- la specifica delle operazioni di interesse
+		SelectionKey key = channel.register(
+									selector, 
+									Operazioni..)
+		- aggiungo questo channel alla lista di channel
+	     che il selettore gestisce 
+		- restituisce una chiave di selezione (detta 
+		  SelectionKey) che include un riferimento al 
+        channel (e' un rappresentante del channel nel 
+		  selettore)
+		- se il channel era gia' registrato, la chiave 
+		  iniziale di selezione viene restituita dopo
+	     essere registrata con le nuove operazioni di 
+	     interesse
+		- lo stesso canale puo' essere registrato con piu'
+		  selettori, la chiave identifica la registrazione
+	     
+La SelectionKey puo' anche contenere un oggetto 
+definito dal programmatore (lo stato del channel), detto
+attachment. Ad esempio per dare un custom ID al channel 
+registrato o allegare il riferimento a un oggetto di 
+cui vogliamo tenere traccia 
+
+- L'operazione di IO di interesse registrata viene 
+  specificata nel parametro ops 
+- 4 possibilita'
+	SelectionKey.OP_ACCEPT
+	SelectionKey.OP_CONNECT
+					.OP_READ
+					.OP_WRITE
+
+int validOps() restituisce tutte le operazioni valide 
+per un channel
+
+- SelectionKey
+Ogetto che memorizza il channel registrato ad un 
+selettore e il suo stato (operazioni di interesse 
+gestite dal selettore e attachment). Creato al momento 
+della registrazione del channel al selettore
+
+- void cancel()
+	- cancella la registrazione. Una chiave di registr.
+	  e' valida fino a quando questo metodo non viene 
+	  invocato (o il channel / selettore vengono chiusi)
+
+- SelectableChannel channel()
+	- restituisce il channel associato alla SelectionKey
+
+- Object attachment()
+	- restituisce l'attachment
+
+La Selection Key memorizza canale, operazione sul 
+canale e altri due bitset, codificatoocme interi
+- interest set: per quali operazioni del canale si e'
+  registrato un interesse
+- ready set: quali operazioni sono pronte sul canale 
+- costanti intere definite nella classe per interpretate
+  come bitmap 
+
+- Interest set 
+	- bitmask che rappresenta le operazioni per cui si 
+	  e' registrato un interesse
+	- definita in fase di registrazione del canale con 
+	  il Selector
+	- modificabile successivamente con InterestOps o 
+     con una nuova maschera
+	- reperibile con selectionKey.interestOps();
+
+- Ready Set
+	- insieme di operazioni sul canale associato alla
+     chiave che sono "pronte", ovvero che il canale 
+	  e' pronto a fare robe
+		- sottoinsieme di interest set
+	- inizializzato a 0 quando la chiave viene creato
+	  ed aggiornato con le select()
+	- restituito dal metodo readyOps() invocato su una 
+	  chiave
+
+- Multiplexing dei Canali 
+	- int n = selector.select();
+	- seleziona i canali pronti per almeno una delle op
+     di I/O tra quelli registrati con quel selettore
+	- restituisce il numero di canali pronti 
+	- i canali che hanno generato un evento dopo 
+	  l'ultima invocazione della select()
+	- costruisce un insieme contenente le chiavi dei 
+	  canali pronti
+	- si blocca fino a che almeno un channel e' pronto
+
+- Analisi processo di selezione
+	- ogni oggetto selettore mantiene i seguenti insiemi 
+	  di chiavi
+		- registered keys: selection key dei canali
+	     registrati 
+		- selected key set: selection key dei canali 
+	     identificati come pronti nell'ultima operazione
+        di selezione per eseguire una operazione 
+        di loro interesse
+		- cancelled key set: contiene le chiavi invalidate
+	     ma non ancora deregistrate
+
+Il processo di selezione, invocato da una select(), 
+comprende due fasi 
+	- rimozione di ogni chiave appartenente al cancelled
+     keyset dagli altri due insiemi e rimozione della
+     registrazione del canale con il selettore
+	- interazione con il sistema operativo per verificare
+	  lo stato di readiness di ogni canale, per ogni 
+	  operazione  specificata nel  suo interest set 
+
+- per ogni canale con almeno una operazione "ready"  
+  dell'interest set 
+	- se la chiave corrispondente non appartiene gia' 
+     al selected key set 
+		- la chiave viene inserita nel selected key set
+		- il ready set di quella chiave viene resettato ed
+	     impostato con le chiavi corrisponendti alle 
+		  operazioni pronte
+	- altrimenti: il ready set viene aggiornato 
+	  calcolando l'or bit a bit con il valore precedente
+	  del ready set
+		- un bit settato non viene mai resettato, ma i 
+	     bit si "accumulano" man mano che le operazioni 
+		  diventano pronte
+
+- comportamente cumulativo della selezione
+	- una chiave aggiunta al selected key set puo' 
+	  essere rimossa solo con una operazione di rimozione
+	  esplicita 
+	- il ready set di una chiave inserita nel selected 
+	  key set non viene mai resettato ma incrementalmente
+	  aggiornato 
+	- scelta  di progetto: assegnare al  programmatore
+	  la responsabilita' di aggiornare esplicitamente le
+	  chiavi 
+	- per resettare il ready set: rimuovere la chiave 
+	  dall'insieme delle chiavi selezionate
+
+- Selector: Definizione  
+	- il ciclo itera sull'insieme di chiavi che 
+	  individuano i "canali pronti"
+	- per ogni chiave si individua il tipo della chiave
+	  a quale canale si riferisce l'evento
+	- keyIterator.remove() deve essere invocata poiche'
+	  il selector non rimuovele istanze delle 
+	  SelectionKey dall'insieme 
+
+
+

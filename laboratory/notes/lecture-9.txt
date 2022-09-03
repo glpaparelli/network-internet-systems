@@ -1,0 +1,237 @@
+-- Lezione 9 -- 
+- UDP Multicast - 
+
+IP multicast basato sul concetto di gruppo 
+	- insieme di processi in esecuzione su host diversi
+	- tutti i membri di un gruppo di multicast ricevono
+	  un messaggio speditosu quel gruppo 
+	- non occorre  essere membri del gruppo per inviare 
+	  messaggi su di esso
+
+- Multicast API 
+deve contenere almeno primitive per
+  - unirsi al gruppo di multicast
+  - uscire dal gruppo di multicast 
+  - spedire messaggi ad un gruppo. Il messaggio viene 
+    recapitato a tutti i processi che fanno parte del 
+    gruppo in quel momento
+  - ricevere messaggi indirizzati ad un gruppo 
+
+- il supporto deve fornire
+	- uno schema di indirizzamento per identificare 	
+	  univocamente un gruppo
+	- un meccanismo che registri la corrispondenza tra
+	  un gruppo ed i suoi partecipanti 
+	- un meccanismo che ottimizzi l'uso della rete nel 
+     caso di invio di pacchetti ad un gruppo di 
+	  multicast 
+
+- Schema di Indirizzamento 
+Basato sull'idea di riservare un certo insieme di 
+indirizzi IP per il multicast
+- IPv4: indirizzo di un gruppo e' un indirizzo di classe
+  D
+	- [224.0.0.0 – 239.255.255.255]
+	- riservati da IANA
+
+Indirizzamento Gruppi di Multicast 
+- multicast addressing: come scegliere un indirizzo di 
+  multicast?
+	- indirizzo di multicast: deve essere noto
+	  collettivamente a tutti i partecipanti al gruppo
+
+- l'allocazione degli indirizzi di multicast su Internet 
+  e' molto complessa, che prevede un ampio numero di casi
+	- gli indirizzi possono essere
+		- statici: assegnati da una autorita' di controllo,
+        utilizzati da particolari protocolli/applicazioni
+			- l'indirizzo rimane assegnato a quel gruppo 
+	        anche se in un certo istante non ci sono 
+	        partecipanti
+		- dinamici: si utilizzano protocolli che consentono
+	     di evitare che lo stesso  indirizzo di multicast
+        sia assegnato a due  gruppi diversi 
+			- esiste solo fino al momento in cui esiste 
+		     almeno un partecipante
+			- richiedono un protocollo specifico
+
+-> Indirizzi di multicast statici
+Gli indirizzi statici possono essere assegnati da IANA o 
+dall'amministratore di rete
+	- assegnati da IANA 
+		- sono validi er tutti gli host della rete 
+        e possono essere cablati nel codice delle
+   	  applicazioni 
+	- assegnati dall'amministratore per una certa 
+	  organizzazione 
+		- valgono per tutti gli host della rete
+		  amministrata
+
+-> Indirizzi di multicast dinamici 
+Per ottenere un indirizzo di multicast in modo dinamico
+e' necessario usare un protocollo opportuno
+	- nell'ambito di una sottorete gestita mediante un 
+ 	  unico dominio amministrativo
+		- MADCAP
+	- nell'ambito piu' generale della rete 
+		- MASC 
+
+- Indirizzi Riservati 
+Esistono alcuni gruppi di multicast "speciali" che non 
+dovrebbero essere usati nelle normali applicazioni 
+- vediteli sulle slides
+
+- Multicast Scoping 
+	- multicast scoping (scope: portata, raggio): come
+	  limitare la diffusione di un pacchetto?
+	- TTL Scoping: il TTL liita la diffusione del 
+	  pacchetto 
+	- administrative scoping: a seconda dell'indirizzo di 
+     in classe D scelto, la diffusione del pacchetto 
+	  viene limitata ad una parte della rete i cui confini
+	  sono definiti da un amministratore di rete
+
+> TTL Scoping 
+IP Multicast Scoping: limita la diffusione di un 
+pacchetto multicast
+
+- ad ogni pacchetto Ip viene associato un valore 
+  rappresentato su un byte, riferito come TTL del 
+  pacchetto
+	- indica il numero massimo di router che il pacchetto
+	  ha attraversato
+
+> Administrative Scoping 
+- guardalo sulle slide
+
+- Multicast: Caratteristiche
+Usa il paradigma connectionless:
+	- la comunicazione connection oriented la gestione
+	  di un alto numero di connessioni 
+		- richieste n*(n-1) connessioni per un gruppo di 
+	     n applicazioni 
+	- comunicazione connectionless adatta per il tipo di 
+	  applicazioni verso cui e' orientato il multicast
+		
+- Java API per multicast 
+Classe MulticastSocket
+ - socket su cui ricevere i messaggi da un gruppo di 	
+	multicast
+ - estendela classe DatagramSocket
+ - effettua overriding dei metodi esistenti in 
+	DatagramSokcet e fornisce nuovi metodi per le tipiche
+   funzionalita' multicast 
+
+MulticastSocket ms = new MulticastSocket(4000);
+InetAddress ia=InetAddress.getByName("226.226.226.226");
+ms.joinGroup (ia); 
+
+- joinGroup necessaria nel caso si vogliono ricevere 
+  messaggi dal gruppo di multicast
+- lega il multicast socket ad un gruppo di multicast:
+  tutti i messaggi ricevuti su quel socket provengono
+  da quel gruppo
+
+Ogni socket multicast ha una proprieta' una proprieta', 
+la reuse socket, che se settata a true da la
+possibilita' di associare piu' socket alla stessa porta
+
+-> Spedire pacchetti 
+Per spedire messaggi ad un gruppo di multicast
+- creare un DatagramSocket su una porta anonima
+- non e' necessario collegare il multicast socket ad un
+  cruppo di multicast
+- creare un pacchetto inserendo nell'intestazione 
+  del gruppo  di multicast a cui si vuole inviare 
+  il pacchetto
+	- spedire il pacchetto tramite il socket creato
+	  public void send(DatagramPacket p)
+
+- Multicast con Channels 
+Channel based multicast introdotto in Java 7
+- DatagramChannel possono essere utilizzati anche per 
+  multicast
+- simile a quando visto per UDP, ma occorre settare 
+  siversi parametri di configurazione del canale 
+- gestione dei ByteBuffer invariata
+
+> un nodo della rete puo' essere connesso a piu' reti 
+  contemporaneamente
+	- network cards 
+	- wireless lan
+	- bluetooth connection 
+
+- NetworkInterfaces: punto di connesione tra un nodo e 
+  la rete e puo' corrispondere a 
+	- una interfaccia fisica 
+	- una interfaccia logica
+  La classe NetworkInterface decrive una interfaccia 
+  di rete, non ha costruttori ma con alcuni metodi 
+  statici 
+	- getByInetAddress: restituisce l'interfaccia 
+	  associata all'indirizzo IP
+	- getByName: usato se si conosce il nome dell'
+     interfaccia
+	- getNetworkInterfaces: restituisce tutte le 
+     interfacce di rete 
+
+> NIO Multicast 
+Quando si crea il DatagramChannel, da utilizzare per 
+multicast, occorre
+- specificare la famiglia di protocollo da usare, 
+  corrisponde al tipo di indirizzo del gruppo di 
+  multicast su cui si colleghera' il Channel 
+- collegare una socket ad una interfaccia ed abilitare 
+  quella interfaccia al multicast
+- abilitare l'opzione SO_REUSEADDR prima di associare 
+  il socket al gruppo di multicast
+	- richieste per permettere a piu' membri di
+     collegarsi allo stesso indirizzo (aprire il socket)
+     senza generare una BindException
+
+NIO Multicast Client 
+- introduce una nuova primita di jpin
+    MemberShip join(InetAddress group, NetworkInterf ni)
+
+- i parametri includono anche la network interface su 
+  cui effettuare la join al gruppo 
+- restituisce una nuova istanza di MembreshipKey, che
+  rappresenta un token di appartenenza al gruppo 
+	- diversi metodi: drop, group , block 
+- per oggenere un'instanza di una NetworkInterface ho 
+  diversi metodi tra cui NgetByInetAddress(InetAddr adr)
+
+- Uniform Resource Identifier (URI) 
+Una uri e' una forma generale per identificare una 
+risorsa presente sulla rete 
+- una URI assoluta puo' essere formata da quattro 
+  componenti
+	<scheme>://<authority><path>?<query>
+	
+	- <scheme> obbligatorio, schema per identificare la 
+     risorsa. 
+	- <autority> il nome di dominio di un host o il suo 
+	  IP
+	- <path> contiene dati specifici per l'autority e 
+     identifica la risorsa nel conteso di quello schema
+     e autorita' 
+	- <query> stringa di informazioni che deve essere 
+	  interpretata dal server 
+
+- Ci sono due tipi di URI 
+	- Uniform Resource Locator (url) 
+		- specifica la locazione di riferimento di una 
+		  risorsa su Internet e come reprerire quella 
+   	- la prima parte di una URL indica un protocollo
+		- La risorsa puo' essere un file su un host, ma 
+		  anche altra roba
+	- Uniform Resource Name (urn)
+
+
+
+
+
+
+
+
+
